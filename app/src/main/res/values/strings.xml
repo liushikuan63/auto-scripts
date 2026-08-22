@@ -1,0 +1,75 @@
+<resources>
+    <string name="app_name">农场助手</string>
+    <string name="accessibility_desc">农场自动化助手 - 模拟点击与屏幕识别</string>
+    <string name="service_name">农场助手正在运行</string>
+    <string name="notification_channel_name">农场助手</string>
+
+    <!-- 配置项 -->
+    <string name="config_water_interval">浇水间隔（分钟）</string>
+    <string name="config_auto_adjust">根据植物自动调整间隔</string>
+    <string name="config_daily_battle">每日对战及奖励</string>
+    <string name="config_surrender_sec">投降等待（秒）</string>
+    <string name="config_new_mode">新模式</string>
+    <string name="config_sell_mode">出售策略</string>
+    <string name="config_account_type">账号类型</string>
+    <string name="config_upgrade_priority">升级策略</string>
+    <string name="config_enable_steal">偷菜</string>
+    <string name="config_enable_bless">祝福</string>
+    <string name="config_max_daily_ops">每日操作上限</string>
+    <string name="config_inherit_countdown">OCR继承倒计时自动调节间隔</string>
+    <string name="config_perfect_mode">完美模式(精细操作)</string>
+    <string name="config_expand_always">每次都尝试开地</string>
+    <string name="config_upgrade_expand_after">升级后开地</string>
+    <string name="config_delay_min">操作间隔下限(ms)</string>
+    <string name="config_delay_max">操作间隔上限(ms)</string>
+    <string name="config_match_threshold">模板匹配阈值</string>
+
+    <!-- Debug / Template -->
+    <string name="action_collect_templates">采集模板</string>
+    <string name="action_debug_tool">调试校准工具</string>
+    <string name="action_toggle_foreground">启用常驻通知</string>
+    <string name="action_toggle_float_log">显示悬浮日志</string>
+
+    <!-- Foreground Notif -->
+    <string name="foreground_channel_name">农场助手常驻</string>
+    <string name="foreground_notif_title">农场助手运行中</string>
+
+    <!-- 操作 -->
+    <string name="action_start">开始</string>
+    <string name="action_pause">暂停</string>
+    <string name="action_stop">停止</string>
+    <string name="action_settings">设置</string>
+
+    <!-- 状态 -->
+    <string name="status_idle">空闲</string>
+    <string name="status_running">运行中</string>
+    <string name="status_paused">已暂停</string>
+    <string name="status_navigating">正在导航到农场...</string>
+    <string name="status_scanning">扫描作物中...</string>
+    <string name="status_watering">浇水中...</string>
+    <string name="status_harvesting">收获中...</string>
+    <string name="status_selling">处理仓库中...</string>
+    <string name="status_visiting">访问好友农场...</string>
+    <string name="status_battling">对战中...</string>
+    <string name="status_upgrading">升级决策中...</string>
+
+    <!-- 出售策略选项 -->
+    <string name="sell_none">不出售</string>
+    <string name="sell_all">全部出售</string>
+    <string name="sell_maxed">仅出售满级</string>
+
+    <!-- 账号类型 -->
+    <string name="account_normal">正常号</string>
+    <string name="account_training">练小号</string>
+
+    <!-- 升级策略 -->
+    <string name="upgrade_land_first">开垦新地</string>
+    <string name="upgrade_stall_first">升级小摊</string>
+    <string name="upgrade_balanced">均衡发展</string>
+
+    <!-- 权限说明 -->
+    <string name="permission_alert_title">需要授权</string>
+    <string name="permission_alert_overlay">请授予"显示在其他应用上层"权限</string>
+    <string name="permission_alert_accessibility">请开启无障碍服务</string>
+    <string name="permission_alert_media_projection">请允许屏幕录制权限</string>
+</resources>
