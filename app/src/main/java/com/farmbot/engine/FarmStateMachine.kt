@@ -861,8 +861,10 @@ class FarmStateMachine(
         }
         delay(RandomDelay.uniform(600, 1400))
         // v1.4.7: 有通道时尝试真实开地/升级入口点击，不再无条件 [模拟]
+        // v1.4.11: 关键词补「开垦/可开垦」——游戏告示牌显示"可开垦"，仅凭"开地/购买土地/
+        // 解锁土地/扩建"无法命中（.contains 子串匹配），导致升级/开地功能不可用
         if (isRealMode() && screenshotProvider != null) {
-            if (tryClickTexts("开地", "购买土地", "解锁土地", "扩建")) {
+            if (tryClickTexts("开垦", "可开垦", "开地", "购买土地", "解锁土地", "扩建")) {
                 delay(RandomDelay.uniform(1000, 2000))
                 if (tryClickTexts("确定", "确认", "购买")) {
                     log("✓已执行开地/升级确认")

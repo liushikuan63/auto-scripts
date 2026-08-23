@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.10: 悬浮窗/菜单无 UI 入口修复（补"显示悬浮窗/隐藏悬浮窗"按钮接通 onShowPanel/onHidePanel）
-        versionCode = 15
-        versionName = "1.4.10"
+        // v1.4.11: 升级/开地 OCR 关键词补"开垦/可开垦"（游戏告示牌命中，修复升级功能不可用）
+        versionCode = 16
+        versionName = "1.4.11"
     }
 
     buildTypes {
