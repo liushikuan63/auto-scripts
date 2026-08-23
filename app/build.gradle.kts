@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.15: 进入农场稳健性增强（扩大确认标志词 + 轮询12s + 更强入口关键词）
-        versionCode = 20
-        versionName = "1.4.15"
+        // v1.4.16: 修复重试上限误用500导致无限点入口 + 点击时长延长提升命中率
+        versionCode = 21
+        versionName = "1.4.16"
     }
 
     buildTypes {

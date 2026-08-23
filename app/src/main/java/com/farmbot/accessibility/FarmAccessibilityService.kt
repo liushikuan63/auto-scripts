@@ -188,7 +188,7 @@ class FarmAccessibilityService : AccessibilityService() {
         val path = GestureBuilder.buildClickPath(actualX, actualY)
         val gesture = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(
-                path, 0L, RandomDelay.randomLong(50L, 150L)))
+                path, 0L, RandomDelay.randomLong(120L, 220L)))
             .build()
         val ok = dispatchGesture(gesture, GestureResultListener("click($actualX,$actualY)"), null)
         if (ok) {

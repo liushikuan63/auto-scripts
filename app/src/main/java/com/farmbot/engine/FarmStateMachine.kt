@@ -220,8 +220,10 @@ class FarmStateMachine(
             return
         }
         retryCount++
-        val cfg = ConfigManager.getConfig()
-        val limit = cfg.maxDailyOperations.coerceAtLeast(MAX_RETRY)
+        // v1.4.16: 重试上限此前误取 maxDailyOperations(500)，导致导航/场景失败被无限重试
+        // （日志"重试(n/500)"，反复点击入口、长时间无结论）。改为按 MAX_RETRY 常量封顶，
+        // 失败快速升级到 重连无障碍→重启游戏→进入空闲，给出明确结果。
+        val limit = MAX_RETRY
         if (retryCount < limit) {
             log("重试 ($retryCount/$limit)...")
             delay(2000L + retryCount * 1000L)
