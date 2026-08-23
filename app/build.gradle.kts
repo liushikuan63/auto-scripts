@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.20: 王者农场横幅点击坐标向左校正（实测文字中心偏右会误入对战页）
-        versionCode = 25
-        versionName = "1.4.20"
+        // v1.4.21: confirmFarmScene 补引导态农场元素（种植/仓库/去告示牌）
+        versionCode = 26
+        versionName = "1.4.21"
     }
 
     buildTypes {

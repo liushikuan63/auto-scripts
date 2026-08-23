@@ -295,7 +295,8 @@ class FarmStateMachine(
      * 注意：不得用"农场/王者农场/浇水/成熟/作物"等宽泛词——大厅入口横幅即含"王者农场
      * 周末双倍"，且大厅可能混排含"浇水/成熟/作物/土地"的宣传文案，会误判进入农场
      * （v1.4.15 曾因加入宽泛词导致"大厅误判已进入农场→乱点灌溉/收获并假成功"）。
-     * 只用"农场页面专属"的强词：一键浇水/一键收获/农场等级/可开垦/我的农场/农场小摊/浇水壶。
+     * v1.4.21: 新手引导态农场页无"一键浇水/可开垦"等强词，仅有右下角"种植"按钮、
+     * 右缘"仓库"入口等农场独有元素（大厅没有这些）。补入"种植/仓库"作为引导态标志。
      */
     private suspend fun confirmFarmScene(): Boolean {
         val provider = screenshotProvider ?: return false
@@ -305,10 +306,14 @@ class FarmStateMachine(
             var inFarm = false
             ocr.recognizeText(bmp) { _, blocks ->
                 val full = blocks.joinToString("") { it.text.replace("\\s".toRegex(), "") }
-                inFarm = listOf(
+                val farmStrong = listOf(
                     "一键浇水", "一键收获", "农场等级",
                     "可开垦", "我的农场", "农场小摊", "浇水壶"
                 ).any { full.contains(it) }
+                // 引导态农场独有元素（大厅/对战页不存在）：
+                // "种植"右下角按钮、"仓库"右缘入口、"去告示牌"引导提示
+                val farmOnboard = listOf("种植", "仓库", "去告示牌").any { full.contains(it) }
+                inFarm = farmStrong || farmOnboard
                 latch.countDown()
             }
             latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
