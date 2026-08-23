@@ -38,6 +38,17 @@ class ScreenshotService : Service() {
         private const val DEFAULT_IMAGE_WIDTH = 1080
         private const val DEFAULT_IMAGE_HEIGHT = 1920
         private const val NOTIF_ID = 1002
+        private const val ALERT_NOTIF_ID = 10021
+
+        // v1.4.8: 告警通知渠道（录屏授权失效等不可自愈事件的用户可见提醒）
+        private const val ALERT_CHANNEL_ID = "farmbot_alert"
+
+        // v1.4.8: 帧新鲜度监测与自愈节流（投影存活但长时间无新帧时重建采集链路）
+        private const val STALE_FRAME_MS = 12_000L
+        private const val REBUILD_THROTTLE_MS = 15_000L
+
+        @Volatile private var lastFrameAtMs = 0L
+        @Volatile private var rebuildAtMs = 0L
 
         private var mediaProjection: MediaProjection? = null
         private var virtualDisplay: VirtualDisplay? = null
@@ -82,6 +93,9 @@ class ScreenshotService : Service() {
                 currentImage?.close()
                 currentImage = null
             }
+            // v1.4.8: 重置新鲜度/自愈时间戳，避免残留旧值影响下次会话判定
+            lastFrameAtMs = 0L
+            rebuildAtMs = 0L
             projectionCallback?.let { cb ->
                 runCatching { mediaProjection?.unregisterCallback(cb) }
             }
@@ -132,6 +146,12 @@ class ScreenshotService : Service() {
                 // v1.4.3: 捕获会话建立后立即装配到引擎（状态机OCR定位依赖此通道）
                 com.farmbot.engine.FarmEngine.getInstance(this).setScreenshotService(this)
             }
+        } else if (!isCapturing()) {
+            // v1.4.8: START_STICKY 进程被杀重启后 intent 为 null、pendingData 已丢失，
+            // 且 Android 14+ 录屏授权为单次令牌不可复用 —— 此前静默不动作导致引擎侧
+            // 只能看到无限"截屏失败"循环；现明确告警引导用户重新授权
+            Log.w(TAG, "⚠无可用录屏授权令牌（进程重启后丢失），需用户重新授权")
+            notifyCaptureLost("进程重启后录屏授权已失效（单次令牌不可复用）")
         }
         return START_STICKY
     }
@@ -146,6 +166,10 @@ class ScreenshotService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
                 android.app.NotificationChannel(channelId, "屏幕捕获", android.app.NotificationManager.IMPORTANCE_LOW)
+            )
+            nm.createNotificationChannel(
+                android.app.NotificationChannel(ALERT_CHANNEL_ID, "农场助手告警", android.app.NotificationManager.IMPORTANCE_HIGH)
+                    .apply { description = "录屏授权失效等需用户介入的事件提醒" }
             )
         }
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -162,6 +186,38 @@ class ScreenshotService : Service() {
             startForeground(NOTIF_ID, builder.build())
         }
         foregroundStarted = true
+    }
+
+    /**
+     * 录屏授权失效等不可自愈事件 → 发高优先级告警通知（v1.4.8 新增可观测性）。
+     * 此前投影被停止后仅静默释放资源，引擎侧只能看到无限"截屏失败"日志，用户无从得知需重新授权。
+     */
+    fun notifyCaptureLost(reason: String) {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val canPost = Build.VERSION.SDK_INT < 33 ||
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!canPost) {
+            Log.w(TAG, "未获通知权限，仅记录告警: $reason")
+            return
+        }
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.app.Notification.Builder(this, ALERT_CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION") android.app.Notification.Builder(this)
+        }
+        val openIntent = android.app.PendingIntent.getActivity(
+            this, 2001,
+            Intent(this, com.farmbot.MainActivity::class.java),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        builder.setContentTitle("⚠ 录屏授权已失效")
+            .setContentText("$reason，请到主界面「权限体检」重新授权录屏")
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setAutoCancel(true)
+            .setContentIntent(openIntent)
+        runCatching { nm.notify(ALERT_NOTIF_ID, builder.build()) }
+        Log.w(TAG, "已发出录屏失效告警: $reason")
     }
 
     override fun onDestroy() {
@@ -198,7 +254,12 @@ class ScreenshotService : Service() {
         val callback = object : MediaProjection.Callback() {
             override fun onStop() {
                 Log.i(TAG, "MediaProjection 被系统或用户停止")
-                Handler(Looper.getMainLooper()).post { Companion.stopCapture() }
+                Handler(Looper.getMainLooper()).post {
+                    // v1.4.8: 授权失效属不可自愈事件 —— 明确告警引导重新授权，
+                    // 配合状态机 onCaptureLost 快速暂停，终结"截屏失败"数百次空转循环
+                    notifyCaptureLost("录屏授权已被系统或用户停止")
+                    Companion.stopCapture()
+                }
             }
         }
         projection.registerCallback(callback, Handler(Looper.getMainLooper()))
@@ -210,21 +271,36 @@ class ScreenshotService : Service() {
         val height = metrics.heightPixels
         val density = metrics.densityDpi
 
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, MAX_IMAGES)
-        // v1.4.4: 监听器移至专用后台线程并持锁消费，确保 buffer queue 不积压（防整机冻结）
-        imageReader?.setOnImageAvailableListener({ reader ->
+        createCapturePipeline(projection, width, height, density)
+        Log.i(TAG, "Capture started: ${width}x${height}")
+        return true
+    }
+
+    /**
+     * 创建 ImageReader + VirtualDisplay 并挂帧监听器（v1.4.8 抽出）：
+     * 首次启动与"无帧自愈重建"共用同一条装配路径，避免两处实现漂移。
+     */
+    private fun createCapturePipeline(projection: MediaProjection, width: Int, height: Int, density: Int) {
+        ensureCaptureThread()
+
+        val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, MAX_IMAGES)
+        // v1.4.4: 监听器跑在专用后台线程并持锁消费，确保 buffer queue 不积压（防整机冻结）；
+        // v1.4.8: 记录帧时间戳，供 captureBitmap 新鲜度监测触发自愈重建
+        reader.setOnImageAvailableListener({ r ->
             try {
-                val image = reader.acquireLatestImage()
-                if (image != null) {
+                val img = r.acquireLatestImage()
+                if (img != null) {
                     synchronized(frameLock) {
                         currentImage?.close()
-                        currentImage = image
+                        currentImage = img
+                        lastFrameAtMs = System.currentTimeMillis()
                     }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "帧消费异常: ${e.message}")
             }
         }, captureHandler)
+        imageReader = reader
 
         virtualDisplay = projection.createVirtualDisplay(
             VIRTUAL_DISPLAY_NAME,
@@ -232,13 +308,11 @@ class ScreenshotService : Service() {
             height,
             density,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            imageReader?.surface,
+            reader.surface,
             null,
             null
         )
-
-        Log.i(TAG, "Capture started: ${width}x${height}")
-        return true
+        lastFrameAtMs = System.currentTimeMillis()
     }
 
     fun captureOnce(): Mat? = synchronized(frameLock) {
@@ -265,43 +339,73 @@ class ScreenshotService : Service() {
      * 获取当前屏幕截图位图（RGBA_8888）。
      * 供 OCR 文字定位使用；无捕获会话或暂无帧时返回 null。
      * v1.4.4: 全程持 frameLock 与后台帧监听线程互斥，杜绝 Image 并发 close/泄漏。
+     * v1.4.8: 投影存活但长时间无新帧时节流触发采集链路自愈重建。
      */
     fun captureBitmap(): Bitmap? {
-        return synchronized(frameLock) {
-            if (mediaProjection == null) {
-                null
-            } else {
-                val fresh = runCatching { imageReader?.acquireLatestImage() }.getOrNull()
-                if (fresh != null) {
-                    currentImage?.close()
-                    currentImage = fresh
-                }
-                val image = currentImage
-                if (image == null) {
-                    null
-                } else {
-                    runCatching {
-                        val plane = image.planes[0]
-                        val buffer = plane.buffer
-                        buffer.rewind()
-                        val pixelStride = plane.pixelStride
-                        val rowStride = plane.rowStride
-                        val rowPadding = rowStride - pixelStride * image.width
-                        val padded = Bitmap.createBitmap(
-                            image.width + rowPadding / pixelStride,
-                            image.height,
-                            Bitmap.Config.ARGB_8888
-                        )
-                        padded.copyPixelsFromBuffer(buffer)
-                        if (rowPadding > 0) {
-                            val trimmed = Bitmap.createBitmap(padded, 0, 0, image.width, image.height)
-                            padded.recycle()
-                            trimmed
-                        } else padded
-                    }.getOrNull()
-                }
+        if (mediaProjection == null) return null   // 投影已停止：授权失效，等待用户重新授权
+        val fresh = runCatching { imageReader?.acquireLatestImage() }.getOrNull()
+        var copied: Bitmap? = null
+        synchronized(frameLock) {
+            if (fresh != null) {
+                currentImage?.close()
+                currentImage = fresh
+                lastFrameAtMs = System.currentTimeMillis()
             }
+            val image = currentImage ?: return@synchronized
+            copied = copyImageToBitmap(image)
         }
+        if (copied != null) return copied
+        // v1.4.8 自愈：投影仍存活但长时间拿不到任何帧（VirtualDisplay surface 失效等场景），
+        // 节流式释放并重建 ImageReader+VirtualDisplay。此前只能永久失败直到重新授权。
+        val now = System.currentTimeMillis()
+        if (lastFrameAtMs > 0 && now - lastFrameAtMs > STALE_FRAME_MS &&
+            now - rebuildAtMs > REBUILD_THROTTLE_MS
+        ) {
+            Log.w(TAG, "⚠超过 ${STALE_FRAME_MS}ms 无新帧，尝试重建采集链路自愈")
+            maybeRebuildCapture()
+        }
+        return null
+    }
+
+    /** 持锁将当前帧拷贝为位图（处理行对齐填充）；失败返回 null */
+    private fun copyImageToBitmap(image: Image): Bitmap? = runCatching {
+        val plane = image.planes[0]
+        val buffer = plane.buffer
+        buffer.rewind()
+        val pixelStride = plane.pixelStride
+        val rowStride = plane.rowStride
+        val rowPadding = rowStride - pixelStride * image.width
+        val padded = Bitmap.createBitmap(
+            image.width + rowPadding / pixelStride,
+            image.height,
+            Bitmap.Config.ARGB_8888
+        )
+        padded.copyPixelsFromBuffer(buffer)
+        if (rowPadding > 0) {
+            val trimmed = Bitmap.createBitmap(padded, 0, 0, image.width, image.height)
+            padded.recycle()
+            trimmed
+        } else padded
+    }.getOrNull()
+
+    /** v1.4.8: 无帧自愈 —— 保持 MediaProjection 会话，仅重建 ImageReader+VirtualDisplay 采集管道 */
+    private fun maybeRebuildCapture() {
+        val projection = mediaProjection ?: return
+        rebuildAtMs = System.currentTimeMillis()
+        val metrics = DisplayMetrics()
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+        val ok = runCatching {
+            virtualDisplay?.release()
+            virtualDisplay = null
+            imageReader?.close()
+            imageReader = null
+            synchronized(frameLock) {
+                currentImage?.close()
+                currentImage = null
+            }
+            createCapturePipeline(projection, metrics.widthPixels, metrics.heightPixels, metrics.densityDpi)
+        }.onFailure { Log.w(TAG, "自愈重建失败: ${it.message}") }.isSuccess
+        Log.i(TAG, if (ok) "✅自愈完成：采集链路已重建（投影会话保留）" else "⚠自愈失败")
     }
 
     private fun imageToMat(image: Image): Mat {
@@ -311,14 +415,29 @@ class ScreenshotService : Service() {
         val rowStride = planes[0].rowStride
         val rowPadding = rowStride - pixelStride * image.width
 
-        val mat = Mat(image.height + rowPadding / pixelStride, image.width, CvType.CV_8UC4)
         buffer.rewind()
         val bytes = ByteArray(buffer.remaining())
         buffer.get(bytes)
-        mat.put(0, 0, bytes)
+
+        // v1.4.8: 修复行填充 bug —— rowStride 对齐产生的是每行末尾的填充字节，不是额外行数；
+        // 此前 Mat(height + rowPadding/pixelStride) 会生成多出的错误行，
+        // 导致下游模板匹配/坐标换算在 rowStride≠width*4 的设备上全部错位。
+        // 逐行拷贝有效像素并跳过行末填充，兼容源码 Stub 与真实 OpenCV AAR
+        val mat = Mat(image.height, image.width, CvType.CV_8UC4)
+        if (rowPadding == 0) {
+            mat.put(0, 0, bytes)
+        } else {
+            val validBytes = pixelStride * image.width
+            var offset = 0
+            for (row in 0 until image.height) {
+                mat.put(row, 0, bytes.copyOfRange(offset, offset + validBytes))
+                offset += rowStride
+            }
+        }
 
         val rgbMat = Mat()
         Imgproc.cvtColor(mat, rgbMat, Imgproc.COLOR_RGBA2RGB)
+        mat.release()
         return rgbMat
     }
 

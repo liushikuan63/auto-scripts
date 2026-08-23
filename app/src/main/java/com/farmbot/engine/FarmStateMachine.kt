@@ -93,6 +93,9 @@ class FarmStateMachine(
     @Volatile private var actionExecutor: ActionExecutor? = null  // 延迟注入（真实点击链路）
     @Volatile private var screenshotProvider: (() -> android.graphics.Bitmap?)? = null  // 截图通道（OCR定位依赖）
 
+    // v1.4.8: 录屏授权失效回调 —— 由 FarmEngine 注入为 pause()；通道死亡时快速暂停替代数百次无效重试
+    @Volatile private var onCaptureLost: (() -> Unit)? = null
+
     fun setTemplateCollector(c: TemplateCollector) { collector = c }
 
     /** 注入动作执行器：无障碍服务连接后由 FarmEngine 调用；注入后业务动作走真实点击 */
@@ -100,6 +103,9 @@ class FarmStateMachine(
 
     /** 注入截图提供者（v1.4.3）：授权录屏后由 FarmEngine 调用，供 OCR 文字定位取帧 */
     fun setScreenshotProvider(provider: (() -> android.graphics.Bitmap?)?) { screenshotProvider = provider }
+
+    /** 注入录屏授权失效回调（v1.4.8）：由 FarmEngine 注入为暂停引擎+发告警通知 */
+    fun setOnCaptureLost(cb: (() -> Unit)?) { onCaptureLost = cb }
 
     fun start() {
         scope.launch { mutex.withLock {
@@ -200,6 +206,19 @@ class FarmStateMachine(
      * 连续 MAX_RECOVER_RETRY 次恢复失败则进入空闲。
      */
     private suspend fun handleRecover(failedState: FarmState) {
+        // v1.4.8: 录屏授权失效属"不可自愈"故障（重连无障碍/重启游戏都救不了，必须用户重新授权）。
+        // 此前按普通失败计入重试且上限取 maxDailyOperations(500)，退避累加导致近一小时无意义空转
+        // （日志表现为"截屏失败…重试(n/500)"）；现检测到真实模式+通道死亡立即回调暂停并告警，
+        // 待用户重新授权录屏后再点"开始/继续"恢复。
+        if (actionExecutor != null &&
+            failedState != FarmState.ReconnectA11y &&
+            failedState != FarmState.RecoverGame &&
+            !com.farmbot.screenshot.ScreenshotService.isCapturing()
+        ) {
+            log("⛔录屏授权已失效，OCR点击通道中断 — 自动暂停（不再空转重试），请重新授权录屏后点继续")
+            onCaptureLost?.invoke()
+            return
+        }
         retryCount++
         val cfg = ConfigManager.getConfig()
         val limit = cfg.maxDailyOperations.coerceAtLeast(MAX_RETRY)
@@ -714,34 +733,86 @@ class FarmStateMachine(
                 !(cfg.respectStealProtection && GameRules.isStealProtectionTime())
         val canBlessNow = cfg.enableBless && blessRemain > 0
         val stealFirst = cfg.stealBeforeBless
+        // v1.4.7: 有截图+点击通道时走真实 OCR 导航（社交→好友列表→逐个拜访）；
+        // 演示路径不再写入每日计数（此前模拟会虚假消耗真实配额）
+        if (isRealMode() && screenshotProvider != null) {
+            visited = visitFriendsViaOcr(canStealNow, canBlessNow, stealRemain, blessRemain)
+            log("好友拜访完成: 顺序[${if (stealFirst) "先偷后祝" else "先祝后偷"}] 真实处理 $visited 位好友农场")
+            return
+        }
         val phases = if (stealFirst) listOf("steal", "bless") else listOf("bless", "steal")
         for (phase in phases) {
             when (phase) {
                 "steal" -> if (canStealNow) {
                     val n = minOf(kotlin.random.Random.nextInt(3, 8), stealRemain)
-                    // v1.4.4: 好友逐个导航点击暂未接入，以下为演示计数，明确标注
-                    log("[模拟] 偷菜阶段将演示处理 $n 位好友（真实偷菜需逐个进入好友农场点击）")
+                    log("[模拟] 偷菜阶段演示 $n 位好友（无截图/点击通道，不计入每日次数）")
                     for (i in 0 until n) {
                         if (!_isRunning.value || !scope.isActive) break
-                        log("[模拟]🥬偷菜 ${i + 1}/$n (今日剩余${stealRemain - i - 1}/${cfg.stealDailyLimit})")
+                        log("[模拟]🥬偷菜 ${i + 1}/$n")
                         delay(RandomDelay.uniform(1000, 2200))
-                        DailyCounters.addSteal()
-                        visited++
                     }
                 }
                 "bless" -> if (canBlessNow) {
                     val n = minOf(kotlin.random.Random.nextInt(2, 6), blessRemain)
-                    log("[模拟] 祝福阶段将演示处理 $n 位好友")
+                    log("[模拟] 祝福阶段演示 $n 位好友（无截图/点击通道，不计入每日次数）")
                     for (i in 0 until n) {
                         if (!_isRunning.value || !scope.isActive) break
-                        log("[模拟]🙏祝福 ${i + 1}/$n (今日剩余${blessRemain - i - 1}/${cfg.blessDailyLimit}) 变异概率+${GameRules.MUTATION_BLESS_BONUS_MIN}%~${GameRules.MUTATION_BLESS_BONUS_MAX}%")
+                        log("[模拟]🙏祝福 ${i + 1}/$n 变异概率+${GameRules.MUTATION_BLESS_BONUS_MIN}%~${GameRules.MUTATION_BLESS_BONUS_MAX}%")
                         delay(RandomDelay.uniform(1000, 2200))
-                        DailyCounters.addBless()
                     }
                 }
             }
         }
-        log("好友拜访完成: 顺序[${if (stealFirst) "先偷后祝" else "先祝后偷"}] 共处理 $visited 位好友农场")
+        log("好友拜访完成: 顺序[${if (stealFirst) "先偷后祝" else "先祝后偷"}] 演示路径不写入每日计数")
+    }
+
+    /**
+     * v1.4.7: 好友拜访真实链路——OCR 定位"社交/好友"入口 → 好友列表逐个点"拜访" →
+     * 在好友农场内尝试偷菜/祝福 → "返回"回列表继续。任何环节失败如实报告并停止，
+     * 每日计数只在真实点击成功后写入。
+     */
+    private suspend fun visitFriendsViaOcr(
+        canSteal: Boolean, canBless: Boolean, stealRemain: Int, blessRemain: Int
+    ): Int {
+        if (!tryClickTexts("好友列表", "好友", "社交")) {
+            log("⚠真实模式: 未找到好友入口，跳过本轮偷菜/祝福（不计入每日次数）")
+            return 0
+        }
+        delay(RandomDelay.uniform(1800, 3000))
+        var stealLeft = stealRemain
+        var blessLeft = blessRemain
+        var visited = 0
+        for (i in 0 until 8) {
+            if (!_isRunning.value || !scope.isActive) break
+            if ((!canSteal || stealLeft <= 0) && (!canBless || blessLeft <= 0)) {
+                log("今日偷菜/祝福配额已用完，停止拜访")
+                break
+            }
+            if (!tryClickTexts("拜访", "去TA的农场", "TA的农场", "进入农场")) {
+                log("⚠真实模式: 好友列表无更多拜访入口，共进入 $visited 位")
+                break
+            }
+            delay(RandomDelay.uniform(2200, 3600))
+            var acted = false
+            if (canSteal && stealLeft > 0 && tryClickTexts("可偷", "偷菜", "摘取")) {
+                DailyCounters.addSteal(); stealLeft--; acted = true
+                log("✓真实偷菜完成(今日剩余$stealLeft)")
+            }
+            if (canBless && blessLeft > 0 && tryClickTexts("祝福", "祈福")) {
+                DailyCounters.addBless(); blessLeft--; acted = true
+                log("✓真实祝福完成(今日剩余$blessLeft)")
+            }
+            visited++
+            if (!acted) log("⚠真实模式: 第${visited}位好友农场未找到偷菜/祝福入口")
+            if (!tryClickTexts("返回", "好友列表")) {
+                log("⚠真实模式: 无法返回好友列表，终止本轮拜访")
+                break
+            }
+            delay(RandomDelay.uniform(1200, 2200))
+        }
+        // 尽力回到自己农场，失败交由后续导航状态兜底
+        tryClickTexts("我的农场", "返回农场", "农场")
+        return visited
     }
 
     private suspend fun dailyBattleInternal() {
@@ -789,7 +860,21 @@ class FarmStateMachine(
             log("💡提示: 4级已解锁一键浇水，8级将解锁一键收获")
         }
         delay(RandomDelay.uniform(600, 1400))
-        log("[模拟] 执行升级/开地操作（真实升级需游戏内多点交互，暂未接入自动执行）")
+        // v1.4.7: 有通道时尝试真实开地/升级入口点击，不再无条件 [模拟]
+        if (isRealMode() && screenshotProvider != null) {
+            if (tryClickTexts("开地", "购买土地", "解锁土地", "扩建")) {
+                delay(RandomDelay.uniform(1000, 2000))
+                if (tryClickTexts("确定", "确认", "购买")) {
+                    log("✓已执行开地/升级确认")
+                } else {
+                    log("✓已点击开地/升级入口（未见确认弹窗，可能已直接生效）")
+                }
+            } else {
+                log("⚠真实模式: 当前页面未找到开地/升级入口（需手动进入对应页面后重试）")
+            }
+            return
+        }
+        log("[模拟] 升级/开地演示（无截图/点击通道）")
         delay(1000)
     }
 

@@ -123,6 +123,20 @@ class MainActivity : ComponentActivity() {
         FarmBotForegroundService.start(this)
     }
 
+    // v1.4.8: 回到前台时若引擎仍在运行而录屏通道已断开，主动提示重新授权（与自动暂停修复形成闭环）
+    override fun onResume() {
+        super.onResume()
+        if (FarmEngine.getInstance(this).engineState.value == EngineState.RUNNING &&
+            !ScreenshotService.isCapturing()
+        ) {
+            Toast.makeText(
+                this,
+                "⚠ 录屏授权已失效，OCR点击通道中断。请到权限体检重新授权录屏",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         Log.i(TAG, "onDestroy: Activity 销毁，但前台服务与悬浮窗保持运行")
