@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.26: 浇水/收获/种植统一走"一键务农"（需靠近雕像），替换不可用的逐株OCR/按钮文字定位
-        versionCode = 31
-        versionName = "1.4.26"
+        // v1.4.29: confirmFarmScene 容忍瞬态加载帧(10%/30%)，重试最多3次避免误判"不在农场"阻断浇水/收获
+        versionCode = 34
+        versionName = "1.4.29"
     }
 
     buildTypes {

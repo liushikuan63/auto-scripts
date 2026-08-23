@@ -298,29 +298,37 @@ class FarmStateMachine(
      * v1.4.21: 新手引导态农场页无"一键浇水/可开垦"等强词，仅有右下角"种植"按钮、
      * 右缘"仓库"入口等农场独有元素（大厅没有这些）。补入"种植/仓库"作为引导态标志。
      */
+    /**
+     * v1.4.28: 农场可能短暂出现在加载帧(如10%/30%)或 OCR 抖动，导致"未确认在农场"误判并阻断浇水/收获。
+     * 增加重试：单次未确认则短暂等待后重试（最多3次），容忍瞬态加载/抖动；确认后提前返回。
+     */
     private suspend fun confirmFarmScene(): Boolean {
         val provider = screenshotProvider ?: return false
-        val bmp = runCatching { provider() }.getOrNull() ?: return false
-        try {
-            val latch = java.util.concurrent.CountDownLatch(1)
-            var inFarm = false
-            ocr.recognizeText(bmp) { _, blocks ->
-                val full = blocks.joinToString("") { it.text.replace("\\s".toRegex(), "") }
-                val farmStrong = listOf(
-                    "一键浇水", "一键收获", "农场等级",
-                    "可开垦", "我的农场", "农场小摊", "浇水壶"
-                ).any { full.contains(it) }
-                // 引导态农场独有元素（大厅/对战页不存在）：
-                // "种植"右下角按钮、"仓库"右缘入口、"去告示牌"引导提示
-                val farmOnboard = listOf("种植", "仓库", "去告示牌").any { full.contains(it) }
-                inFarm = farmStrong || farmOnboard
-                latch.countDown()
+        for (attempt in 0 until 3) {
+            val bmp = runCatching { provider() }.getOrNull() ?: return false
+            try {
+                val latch = java.util.concurrent.CountDownLatch(1)
+                var inFarm = false
+                ocr.recognizeText(bmp) { _, blocks ->
+                    val full = blocks.joinToString("") { it.text.replace("\\s".toRegex(), "") }
+                    val farmStrong = listOf(
+                        "一键浇水", "一键收获", "农场等级",
+                        "可开垦", "我的农场", "农场小摊", "浇水壶"
+                    ).any { full.contains(it) }
+                    // 引导态农场独有元素（大厅/对战页不存在）：
+                    // "种植"右下角按钮、"仓库"右缘入口、"去告示牌"引导提示
+                    val farmOnboard = listOf("种植", "仓库", "去告示牌").any { full.contains(it) }
+                    inFarm = farmStrong || farmOnboard
+                    latch.countDown()
+                }
+                latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                if (inFarm) return true
+            } finally {
+                bmp.recycle()
             }
-            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
-            return inFarm
-        } finally {
-            bmp.recycle()
+            if (attempt < 2) delay(800)
         }
+        return false
     }
 
     /**
@@ -626,6 +634,12 @@ class FarmStateMachine(
                 if (t.contains("王者农场") || t.contains("周末双倍")) {
                     if (cx > 300) { cx -= 86; cy -= 32 }
                 }
+                // v1.4.28: 「一键务农」为蓝色圆形图标+下方文字标签，OCR 命中标签文字，可点的圆图标在其上方。
+                // 点标签中心会落在图标下方导致面板不开（实测日志：点(1330,688)后仍停留在农场主界面）。
+                // 向上偏移命中圆形图标。
+                if (t.contains("一键务农")) {
+                    if (cy > 200) cy -= 80
+                }
                 svc.click(cx, cy)
                 log("✅ OCR定位[$t]($cx,$cy) 已点击")
                 delay(RandomDelay.uniform(600, 1200))
@@ -808,9 +822,11 @@ class FarmStateMachine(
      * 且作物为纯画面、无 OCR 文本，逐株定位不可用。正确路径：
      *   需靠近雕像才显示"一键务农" → 点击 → 面板内三项(浇水/收获/种植)默认勾选 → 点"确定"即自动统一执行。
      * 未靠近雕像(找不到按钮)或面板未确认时如实返回 0，不假成功。
+     * v1.4.27: 未靠近雕像时先模拟方向键把角色推向雕像（moveTowardsStatue）。
      */
     private suspend fun doOneKeyFarming(): Int {
-        if (!tryClickTexts("一键务农")) {
+        // v1.4.27: 若"一键务农"未显示（角色不在雕像旁），先推摇杆把角色移向雕像
+        if (!tryClickTexts("一键务农") && !moveTowardsStatue()) {
             log("⚠未找到[一键务农]（需靠近雕像才显示），本轮跳过")
             return 0
         }
@@ -822,6 +838,26 @@ class FarmStateMachine(
         }
         log("⚠一键务农设置面板未找到确定按钮")
         return 0
+    }
+
+    /**
+     * v1.4.27: 模拟"移动方向键"（左下角虚拟摇杆）把角色推向雕像。
+     * "一键务农"需靠近雕像才显示；若角色不在雕像旁，按住摇杆向雕像方向拖动可移动角色。
+     * 摇杆基准与方向为经验值；每次推动后复查"一键务农"是否出现，出现即认为已到达。
+     */
+    private suspend fun moveTowardsStatue(): Boolean {
+        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return false
+        val joyX = 300
+        val joyY = 880
+        for (i in 0 until 4) {
+            if (!_isRunning.value || !scope.isActive) return false
+            // 按住摇杆向上(略偏中)拖动约1.2s，驱动角色朝雕像方向移动
+            svc.swipe(joyX, joyY, joyX + 40, joyY - 300, 1200)
+            delay(RandomDelay.uniform(1000, 1800))
+            if (tryClickTexts("一键务农")) return true
+            log("朝雕像移动(第${i + 1}次)，仍未出现[一键务农]")
+        }
+        return false
     }
 
     private suspend fun sellOrStoreInternal() {
