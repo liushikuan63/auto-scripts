@@ -82,8 +82,9 @@ class FloatingLogView(context: Context) {
                 type, flags, PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
+                // v1.4.9: 默认位置下移到屏幕中下部，避免与顶部居中的控制面板重叠而拦截其按钮点击
                 x = (screenWidth * 0.05f).toInt()
-                y = (screenHeight * 0.2f).toInt()
+                y = (screenHeight * 0.45f).toInt()
             }
 
             // ===== 标题栏 =====

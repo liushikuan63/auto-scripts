@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.8: 录屏授权失效可观测性修复（告警通知+自动暂停）+ 无帧自愈重建 + imageToMat 行填充修复
-        versionCode = 13
-        versionName = "1.4.8"
+        // v1.4.9: 悬浮窗交互/定位修复（移除 FLAG_LAYOUT_NO_LIMITS + 动态屏幕边界 + 日志窗默认位避开面板）
+        versionCode = 14
+        versionName = "1.4.9"
     }
 
     buildTypes {

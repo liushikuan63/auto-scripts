@@ -110,8 +110,23 @@ class FloatingPanelManager(
 
     private val displayMetrics by lazy { appContext.resources.displayMetrics }
     private val density by lazy { displayMetrics.density }
-    private val screenWidth by lazy { displayMetrics.widthPixels }
     private val edgeThreshold by lazy { (50 * density).toInt() } // 50dp 内吸附
+
+    // v1.4.9: 屏幕可用边界动态获取（WindowMetrics），替换此前按 resources.displayMetrics 一次性懒加载。
+    // targetSdk 36 强制 Edge-to-Edge，且旋转后尺寸会变；固定值会导致 clamp/吸附坐标错位、
+    // 窗口被夹出屏幕或部分按钮越界不可点击（"菜单无法交互/无法定位"的根因之一）。
+    private fun screenWidthPx(): Int = screenBounds().first
+    private fun screenHeightPx(): Int = screenBounds().second
+    private fun screenBounds(): Pair<Int, Int> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                val b = (appContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager)
+                    .currentWindowMetrics.bounds
+                return b.width() to b.height()
+            }
+        }
+        return displayMetrics.widthPixels to displayMetrics.heightPixels
+    }
 
     // 拖动回调（由 Compose pointerInput 触发 → 更新 WindowManager LayoutParams）
     private var onDragDelta: ((Float, Float) -> Unit)? = null
@@ -148,14 +163,15 @@ class FloatingPanelManager(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             type,
+            // v1.4.9: 移除 FLAG_LAYOUT_NO_LIMITS —— 允许窗口超出屏幕是"菜单无法定位/部分按钮不可点"的根因。
+            // 保留 FLAG_LAYOUT_IN_SCREEN 即可让窗口落在屏幕安全坐标内，同时保证可拖拽与边缘吸附正常。
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
                     or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         )
         // 用 TOP|START，x/y 即为距左/上边缘的像素值，方便边缘吸附计算
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = ((screenWidth - 130 * density) / 2).toInt()
+        params.x = ((screenWidthPx() - 130 * density) / 2).toInt()
         params.y = (100 * density).toInt()
 
         // 拖动回调：浮点累加后取整应用，消除亚像素截断
@@ -265,8 +281,8 @@ class FloatingPanelManager(
         if (v.width <= 0 || v.height <= 0) return
         val p = layoutParams ?: return
         val margin = (8 * density).toInt()
-        val sh = displayMetrics.heightPixels
-        val maxX = (screenWidth - v.width - margin).coerceAtLeast(margin)
+        val sh = screenHeightPx()
+        val maxX = (screenWidthPx() - v.width - margin).coerceAtLeast(margin)
         val maxY = (sh - v.height - margin).coerceAtLeast(margin)
         val nx = p.x.coerceIn(margin, maxX)
         val ny = p.y.coerceIn(margin, maxY)
@@ -287,7 +303,7 @@ class FloatingPanelManager(
         val centerX = params.x + view.width / 2
         if (centerX < edgeThreshold) {
             hideToEdge(0)  // 左边
-        } else if (centerX > screenWidth - edgeThreshold) {
+        } else if (centerX > screenWidthPx() - edgeThreshold) {
             hideToEdge(1)  // 右边
         }
     }
@@ -309,9 +325,9 @@ class FloatingPanelManager(
             params.x = if (edgeSide.value == 0) {
                 (12 * density).toInt()
             } else {
-                (screenWidth - 160 * density).toInt()
+                (screenWidthPx() - 160 * density).toInt()
             }
-            val maxY = (displayMetrics.heightPixels - 120 * density).toInt().coerceAtLeast(0)
+            val maxY = (screenHeightPx() - 120 * density).toInt().coerceAtLeast(0)
             params.y = params.y.coerceIn(0, maxY)
         }
         panelMode.value = PanelMode.EXPANDED
@@ -332,7 +348,7 @@ class FloatingPanelManager(
         edgeSide.value = side
         // 贴边前把 y 夹回屏幕内，防止边缘条因之前的拖动位置而不可见
         layoutParams?.let { p ->
-            val maxY = (displayMetrics.heightPixels - 80 * density).toInt().coerceAtLeast(0)
+            val maxY = (screenHeightPx() - 80 * density).toInt().coerceAtLeast(0)
             p.y = p.y.coerceIn(0, maxY)
         }
         panelMode.value = PanelMode.EDGE_HIDDEN
@@ -358,7 +374,7 @@ class FloatingPanelManager(
                 params.width = (8 * density).toInt()
                 params.height = (80 * density).toInt()
                 // 紧贴对应边缘
-                params.x = if (edgeSide.value == 0) 0 else screenWidth - params.width
+                params.x = if (edgeSide.value == 0) 0 else screenWidthPx() - params.width
             }
         }
         runCatching { windowManager?.updateViewLayout(view, params) }
