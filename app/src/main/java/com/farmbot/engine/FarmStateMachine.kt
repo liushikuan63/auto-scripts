@@ -788,13 +788,14 @@ class FarmStateMachine(
                 log("今日偷菜/祝福配额已用完，停止拜访")
                 break
             }
-            if (!tryClickTexts("拜访", "去TA的农场", "TA的农场", "进入农场")) {
+            if (!tryClickTexts("拜访", "进入好友农场", "去TA的农场", "TA的农场", "进入农场")) {
                 log("⚠真实模式: 好友列表无更多拜访入口，共进入 $visited 位")
                 break
             }
             delay(RandomDelay.uniform(2200, 3600))
             var acted = false
-            if (canSteal && stealLeft > 0 && tryClickTexts("可偷", "偷菜", "摘取")) {
+            // v1.4.12: 偷菜按钮实际文案为"拿取"（靠近发光成熟作物点击拿取），补入关键词
+            if (canSteal && stealLeft > 0 && tryClickTexts("拿取", "可偷", "偷菜", "摘取")) {
                 DailyCounters.addSteal(); stealLeft--; acted = true
                 log("✓真实偷菜完成(今日剩余$stealLeft)")
             }
