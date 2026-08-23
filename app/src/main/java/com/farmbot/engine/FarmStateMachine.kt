@@ -285,6 +285,35 @@ class FarmStateMachine(
 
     // ============ 业务状态 ============
 
+    /**
+     * v1.4.14: 用 OCR 确认当前确实处于农场页面。
+     * 王者农场为 SurfaceView 自绘、无障碍节点树为空，GameSceneDetector 的
+     * classifyFromText 依赖节点树文本，对农场页面不可靠（大厅 Activity 常被判为
+     * GAME_HALL/OTHER_IN_GAME）。故改用 OCR 识别农场标志性文字作为"是否已进农场"的依据，
+     * 避免在大厅界面误命中"收获/好友/拜访/农场"等字乱点并虚假报告成功。
+     * 注意：不得用"农场/王者农场"作为标志词——大厅入口按钮即含"王者农场 周末双倍"字样。
+     */
+    private suspend fun confirmFarmScene(): Boolean {
+        val provider = screenshotProvider ?: return false
+        val bmp = runCatching { provider() }.getOrNull() ?: return false
+        try {
+            val latch = java.util.concurrent.CountDownLatch(1)
+            var inFarm = false
+            ocr.recognizeText(bmp) { _, blocks ->
+                val full = blocks.joinToString("") { it.text.replace("\\s".toRegex(), "") }
+                inFarm = listOf(
+                    "一键浇水", "一键收获", "农场等级", "我的农场",
+                    "好友农场", "农场小摊", "可开垦", "浇水壶"
+                ).any { full.contains(it) }
+                latch.countDown()
+            }
+            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+            return inFarm
+        } finally {
+            bmp.recycle()
+        }
+    }
+
     private suspend fun navigateToFarm() {
         log("导航至农场...")
         val success = doNavigateToFarm()
@@ -298,6 +327,12 @@ class FarmStateMachine(
 
     private suspend fun scanCrops() {
         log("扫描作物状态...")
+        // v1.4.14: 双保险——未确认在农场页面则回到导航重试，杜绝在大厅乱点并虚假报告
+        if (!confirmFarmScene()) {
+            log("⚠当前未确认在农场页面，回到导航重试（避免在大厅误点）")
+            transitionToInternal(FarmState.NavigateToFarm)
+            return
+        }
         val cfg = ConfigManager.getConfig()
         if (dailyOperationCount >= cfg.maxDailyOperations) {
             log("已达每日操作上限 (${cfg.maxDailyOperations})，停止")
@@ -577,8 +612,14 @@ class FarmStateMachine(
         val entered = tryClickTexts("王者农场", "稷下学院", "农场")
         if (entered) {
             delay(RandomDelay.uniform(1500, 3000))
-            log("已进入农场页面: ${com.farmbot.accessibility.GameSceneDetector.currentScene.value.displayName}")
-            return true
+            // v1.4.14: 点击入口后必须用 OCR 确认确实进入农场页面，否则不算成功（此前仅打
+            // "已进入农场页面"日志不校验，导致在大厅误点后仍进入后续状态狂刷误点击）
+            if (confirmFarmScene()) {
+                log("✅已确认进入农场页面")
+                return true
+            }
+            log("⚠点击了农场入口但未确认进入农场页面（OCR未见农场标志词）")
+            return false
         }
         log("⚠农场入口点击失败（OCR通道需录屏授权；可手动进入一次农场页面后重试）")
         return false

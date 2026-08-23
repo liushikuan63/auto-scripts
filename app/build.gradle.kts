@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.13: 好友入口关键词以「社交」按钮优先（避免 OCR 误点"好友列表"标题导致流程空转）
-        versionCode = 18
-        versionName = "1.4.13"
+        // v1.4.14: 农场场景门控（confirmFarmScene OCR 确认，杜绝在大厅误点并虚假报告成功）
+        versionCode = 19
+        versionName = "1.4.14"
     }
 
     buildTypes {
