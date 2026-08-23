@@ -291,9 +291,11 @@ class FarmStateMachine(
      * v1.4.14: 用 OCR 确认当前确实处于农场页面。
      * 王者农场为 SurfaceView 自绘、无障碍节点树为空，GameSceneDetector 的
      * classifyFromText 依赖节点树文本，对农场页面不可靠（大厅 Activity 常被判为
-     * GAME_HALL/OTHER_IN_GAME）。故改用 OCR 识别农场标志性文字作为"是否已进农场"的依据，
-     * 避免在大厅界面误命中"收获/好友/拜访/农场"等字乱点并虚假报告成功。
-     * 注意：不得用"农场/王者农场"作为标志词——大厅入口按钮即含"王者农场 周末双倍"字样。
+     * GAME_HALL/OTHER_IN_GAME）。故改用 OCR 识别农场标志性文字作为"是否已进农场"的依据。
+     * 注意：不得用"农场/王者农场/浇水/成熟/作物"等宽泛词——大厅入口横幅即含"王者农场
+     * 周末双倍"，且大厅可能混排含"浇水/成熟/作物/土地"的宣传文案，会误判进入农场
+     * （v1.4.15 曾因加入宽泛词导致"大厅误判已进入农场→乱点灌溉/收获并假成功"）。
+     * 只用"农场页面专属"的强词：一键浇水/一键收获/农场等级/可开垦/我的农场/农场小摊/浇水壶。
      */
     private suspend fun confirmFarmScene(): Boolean {
         val provider = screenshotProvider ?: return false
@@ -304,9 +306,8 @@ class FarmStateMachine(
             ocr.recognizeText(bmp) { _, blocks ->
                 val full = blocks.joinToString("") { it.text.replace("\\s".toRegex(), "") }
                 inFarm = listOf(
-                    "一键浇水", "一键收获", "农场等级", "我的农场",
-                    "好友农场", "农场小摊", "可开垦", "浇水",
-                    "成熟", "作物", "收菜", "土地", "灌溉"
+                    "一键浇水", "一键收获", "农场等级",
+                    "可开垦", "我的农场", "农场小摊", "浇水壶"
                 ).any { full.contains(it) }
                 latch.countDown()
             }
@@ -653,7 +654,7 @@ class FarmStateMachine(
             val latch = java.util.concurrent.CountDownLatch(1)
             ocr.recognizeText(bmp) { fullText, _ ->
                 found.set(
-                    listOf("一键收获", "全部收获", "可收获", "已成熟").any { fullText.contains(it) }
+                    listOf("一键收获", "全部收获", "成熟作物", "可收获").any { fullText.contains(it) }
                 )
                 latch.countDown()
             }
@@ -669,8 +670,13 @@ class FarmStateMachine(
     private suspend fun waterCropsInternal(): Int {
         // === 真实模式：优先点"一键浇水"（Lv4+ 解锁，一次批量完成） ===
         // v1.4.4: 点击失败如实返回0交给上层恢复链，不再静默走假计数循环冒充真实进度
+        // v1.4.19: 先确认在农场才执行，杜绝在大厅误命"浇水/收获"等宣传文字假成功
         if (isRealMode()) {
-            return if (tryClickTexts("一键浇水", "全部浇水", "浇水")) 1 else {
+            if (!confirmFarmScene()) {
+                log("⚠未确认在农场页面，本次浇水不计入（避免大厅误点）")
+                return 0
+            }
+            return if (tryClickTexts("一键浇水", "全部浇水", "浇水壶")) 1 else {
                 log("⚠真实模式: 未找到浇水入口，本轮不计入虚拟进度")
                 0
             }
@@ -700,8 +706,13 @@ class FarmStateMachine(
     private suspend fun harvestCropsInternal(): Int {
         // === 真实模式：优先点"一键收获"（Lv8+ 解锁） ===
         // v1.4.4: 点击失败如实返回0，不再随机编造收获株数
+        // v1.4.19: 先确认在农场才执行，防止大厅误命"收获"文字假成功
         if (isRealMode()) {
-            return if (tryClickTexts("一键收获", "全部收获", "收获")) 1 else {
+            if (!confirmFarmScene()) {
+                log("⚠未确认在农场页面，本次收获不计入（避免大厅误点）")
+                return 0
+            }
+            return if (tryClickTexts("一键收获", "全部收获", "成熟作物")) 1 else {
                 log("⚠真实模式: 未找到收获入口，本轮不计入虚拟进度")
                 0
             }

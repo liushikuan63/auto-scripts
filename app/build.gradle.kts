@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.18: 轮播横幅入口——确认期间未进入则重新点击（X 坐标 427→568 证实横幅会滚动）
-        versionCode = 23
-        versionName = "1.4.18"
+        // v1.4.19: 修复大厅误判已进入农场——confirmFarmScene 改回农场强特征词 + 浇/收前门禁
+        versionCode = 24
+        versionName = "1.4.19"
     }
 
     buildTypes {
