@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.19: 修复大厅误判已进入农场——confirmFarmScene 改回农场强特征词 + 浇/收前门禁
-        versionCode = 24
-        versionName = "1.4.19"
+        // v1.4.20: 王者农场横幅点击坐标向左校正（实测文字中心偏右会误入对战页）
+        versionCode = 25
+        versionName = "1.4.20"
     }
 
     buildTypes {

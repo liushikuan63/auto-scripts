@@ -555,8 +555,15 @@ class FarmStateMachine(
             val target = hit
             val t = hitText
             if (target != null && t != null) {
-                val cx = target.x + target.width / 2
-                val cy = target.y + target.height / 2
+                var cx = target.x + target.width / 2
+                var cy = target.y + target.height / 2
+                // v1.4.20: 「王者农场 周末双倍」为横幅卡片，OCR 只命中"王者农场"文字块，
+                // 其中心偏右（实测文字中心约 (572,842)，而横幅可点区中心约 (486,810)）。
+                // 若按文字中心点击会落到"对战"区域误入模式选择页。对入口横幅做向左校正，
+                // 命中横幅主体可点区。偏移量基于真机/模拟器大厅实测的横幅卡片几何关系。
+                if (t.contains("王者农场") || t.contains("周末双倍")) {
+                    if (cx > 300) cx -= 150
+                }
                 svc.click(cx, cy)
                 log("✅ OCR定位[$t]($cx,$cy) 已点击")
                 delay(RandomDelay.uniform(600, 1200))
