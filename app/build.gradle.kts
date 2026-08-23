@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.12: 好友偷菜/拜访 OCR 关键词联网校准（补"拿取"/"进入好友农场"）
-        versionCode = 17
-        versionName = "1.4.12"
+        // v1.4.13: 好友入口关键词以「社交」按钮优先（避免 OCR 误点"好友列表"标题导致流程空转）
+        versionCode = 18
+        versionName = "1.4.13"
     }
 
     buildTypes {

@@ -774,7 +774,10 @@ class FarmStateMachine(
     private suspend fun visitFriendsViaOcr(
         canSteal: Boolean, canBless: Boolean, stealRemain: Int, blessRemain: Int
     ): Int {
-        if (!tryClickTexts("好友列表", "好友", "社交")) {
+        // v1.4.13: 好友入口关键词以「社交」按钮优先（农场页右下角为权威入口）。
+        // 原顺序"好友列表/好友/社交"会让 OCR 优先命中页面上的"好友列表"标题等非按钮文本
+        // （.contains 子串匹配按顺序取首个命中），导致点到标题中心而实际无效、流程空转。
+        if (!tryClickTexts("社交", "好友列表", "好友农场", "好友")) {
             log("⚠真实模式: 未找到好友入口，跳过本轮偷菜/祝福（不计入每日次数）")
             return 0
         }
