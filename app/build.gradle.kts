@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.9: 悬浮窗交互/定位修复（移除 FLAG_LAYOUT_NO_LIMITS + 动态屏幕边界 + 日志窗默认位避开面板）
-        versionCode = 14
-        versionName = "1.4.9"
+        // v1.4.10: 悬浮窗/菜单无 UI 入口修复（补"显示悬浮窗/隐藏悬浮窗"按钮接通 onShowPanel/onHidePanel）
+        versionCode = 15
+        versionName = "1.4.10"
     }
 
     buildTypes {

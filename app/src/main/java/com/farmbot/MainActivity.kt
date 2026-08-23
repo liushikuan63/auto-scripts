@@ -285,6 +285,8 @@ private fun MainScreen(
                 onCheckUsage = onCheckUsage,
                 onCheckScreenshot = onCheckScreenshot,
                 onEnableBackground = onEnableBackground,
+                onShowPanel = onShowPanel,
+                onHidePanel = onHidePanel,
                 onShowLog = onShowLog,
                 onCopyLogs = onCopyLogs
             )
@@ -373,6 +375,8 @@ private fun DiagnosticsSection(
     onCheckUsage: () -> Unit,
     onCheckScreenshot: () -> Unit,
     onEnableBackground: () -> Unit,
+    onShowPanel: () -> Unit,
+    onHidePanel: () -> Unit,
     onShowLog: () -> Unit,
     onCopyLogs: () -> Unit
 ) {
@@ -383,6 +387,13 @@ private fun DiagnosticsSection(
             StatusRow("使用情况访问(识别前台)", onCheckUsage)
             StatusRow("录屏授权(OCR定位)", onCheckScreenshot)
             StatusRow("忽略电池优化", onEnableBackground)
+            Spacer(Modifier.height(8.dp))
+            // v1.4.10: 悬浮控制面板/菜单此前无任何 UI 入口（onShowPanel 声明后从未被使用）→
+            // 面板完全不可达。补"显示悬浮窗"/"隐藏悬浮窗"按钮并接通 onShowPanel/onHidePanel。
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onShowPanel, modifier = Modifier.weight(1f)) { Text("🪟 显示悬浮窗") }
+                Button(onClick = onHidePanel, modifier = Modifier.weight(1f)) { Text("隐藏悬浮窗") }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onShowLog, modifier = Modifier.weight(1f)) { Text("显示日志窗") }
                 Button(onClick = onCopyLogs, modifier = Modifier.weight(1f)) { Text("复制日志") }
