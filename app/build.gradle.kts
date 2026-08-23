@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.14: 农场场景门控（confirmFarmScene OCR 确认，杜绝在大厅误点并虚假报告成功）
-        versionCode = 19
-        versionName = "1.4.14"
+        // v1.4.15: 进入农场稳健性增强（扩大确认标志词 + 轮询12s + 更强入口关键词）
+        versionCode = 20
+        versionName = "1.4.15"
     }
 
     buildTypes {

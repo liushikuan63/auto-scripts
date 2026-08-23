@@ -303,7 +303,8 @@ class FarmStateMachine(
                 val full = blocks.joinToString("") { it.text.replace("\\s".toRegex(), "") }
                 inFarm = listOf(
                     "一键浇水", "一键收获", "农场等级", "我的农场",
-                    "好友农场", "农场小摊", "可开垦", "浇水壶"
+                    "好友农场", "农场小摊", "可开垦", "浇水",
+                    "成熟", "作物", "收菜", "土地", "灌溉"
                 ).any { full.contains(it) }
                 latch.countDown()
             }
@@ -609,16 +610,20 @@ class FarmStateMachine(
         }
         // 游戏在前台：三级降级链点击农场入口
         log("真实导航: 点击农场入口（节点精确→模糊→OCR坐标）")
-        val entered = tryClickTexts("王者农场", "稷下学院", "农场")
+        val entered = tryClickTexts("王者农场", "周末双倍", "进入农场", "去农场", "我的农场")
         if (entered) {
-            delay(RandomDelay.uniform(1500, 3000))
-            // v1.4.14: 点击入口后必须用 OCR 确认确实进入农场页面，否则不算成功（此前仅打
-            // "已进入农场页面"日志不校验，导致在大厅误点后仍进入后续状态狂刷误点击）
-            if (confirmFarmScene()) {
-                log("✅已确认进入农场页面")
-                return true
+            // v1.4.14: 点击入口后轮询用 OCR 确认进入农场（农场加载/OCR 识别需要时间），
+            // 最多约 12s；未确认则返回 false 进入恢复流程，绝不误入后续状态（此前仅等
+            // 1.5-3s 查一次，易因页面未加载完成而误判"未进入"）。
+            for (i in 0 until 6) {
+                delay(RandomDelay.uniform(1500, 2500))
+                if (!_isRunning.value) return false
+                if (confirmFarmScene()) {
+                    log("✅已确认进入农场页面")
+                    return true
+                }
             }
-            log("⚠点击了农场入口但未确认进入农场页面（OCR未见农场标志词）")
+            log("⚠点击了农场入口但未确认进入农场页面（OCR未见农场标志词，可能需手动进入）")
             return false
         }
         log("⚠农场入口点击失败（OCR通道需录屏授权；可手动进入一次农场页面后重试）")
