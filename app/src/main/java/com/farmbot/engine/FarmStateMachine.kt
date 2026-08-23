@@ -615,15 +615,18 @@ class FarmStateMachine(
         val entered = tryClickTexts("王者农场", "周末双倍", "进入农场", "去农场", "我的农场")
         if (entered) {
             // v1.4.14: 点击入口后轮询用 OCR 确认进入农场（农场加载/OCR 识别需要时间），
-            // 最多约 12s；未确认则返回 false 进入恢复流程，绝不误入后续状态（此前仅等
-            // 1.5-3s 查一次，易因页面未加载完成而误判"未进入"）。
-            for (i in 0 until 6) {
+            // 最多约 12s；未确认则返回 false 进入恢复流程，绝不误入后续状态。
+            // v1.4.18: 「王者农场 周末双倍」为轮播横幅，X 坐标随时间变化（日志 427→568），
+            // 首击可能未落准或横幅已滚动 → 轮询期间未确认则重新点击入口再确认，而非干等。
+            for (i in 0 until 7) {
                 delay(RandomDelay.uniform(1500, 2500))
                 if (!_isRunning.value) return false
                 if (confirmFarmScene()) {
                     log("✅已确认进入农场页面")
                     return true
                 }
+                log("尚未确认进入农场，尝试重新点击入口(${i + 1})")
+                tryClickTexts("王者农场", "周末双倍", "进入农场", "去农场", "我的农场")
             }
             log("⚠点击了农场入口但未确认进入农场页面（OCR未见农场标志词，可能需手动进入）")
             return false

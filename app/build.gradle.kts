@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.17: 点击可观测性（手势完成/取消/派发失败可见化，便于诊断"点击未生效"）
-        versionCode = 22
-        versionName = "1.4.17"
+        // v1.4.18: 轮播横幅入口——确认期间未进入则重新点击（X 坐标 427→568 证实横幅会滚动）
+        versionCode = 23
+        versionName = "1.4.18"
     }
 
     buildTypes {
