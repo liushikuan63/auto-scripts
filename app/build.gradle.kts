@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.23: 好友拜访返回不再用裸词"农场"，避免误点大厅聊天面板"农场"标签
-        versionCode = 28
-        versionName = "1.4.23"
+        // v1.4.25: 王者农场横幅点击按实测偏移 (cx-86,cy-32) 校正（原 -150 过度修正落点偏离卡片中心）
+        versionCode = 30
+        versionName = "1.4.25"
     }
 
     buildTypes {

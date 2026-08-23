@@ -323,6 +323,54 @@ class FarmStateMachine(
         }
     }
 
+    /**
+     * v1.4.24: 用 OCR 自动检测农场等级并校正配置。
+     * 配置默认 farmLevel=1，而账号实际农场等级可能更高（如 Lv38），导致策略/地块数/功能解锁判断错误。
+     * 仅应在确认已身处农场页面后调用。识别优先级：
+     *   1) 显式 "农场等级N" / "等级N" / "LvN"
+     *   2) 兜底：农场名"XX的农场"同排顶部区域的 2 位纯数字（等级徽章）
+     */
+    private suspend fun detectFarmLevel(): Int? {
+        val provider = screenshotProvider ?: return null
+        val bmp = runCatching { provider() }.getOrNull() ?: return null
+        return try {
+            val out = java.util.concurrent.atomic.AtomicInteger(-1)
+            val latch = java.util.concurrent.CountDownLatch(1)
+            ocr.recognizeText(bmp) { _, blocks ->
+                var level = -1
+                for (b in blocks) {
+                    val clean = b.text.replace("\\s".toRegex(), "")
+                    val mLevel = Regex("(?:农场)?等级[:：]?(\\d{1,3})").find(clean)
+                    if (mLevel != null) {
+                        level = mLevel.groupValues[1].toIntOrNull() ?: -1
+                        break
+                    }
+                    val mLv = Regex("Lv[:：]?(\\d{1,3})", RegexOption.IGNORE_CASE).find(clean)
+                    if (mLv != null) {
+                        level = mLv.groupValues[1].toIntOrNull() ?: -1
+                        break
+                    }
+                }
+                // 兜底：顶部区域的纯数字(1~100位宽1-3)即等级徽章；货币形如"757.84万"不会被当纯数字
+                if (level <= 0) {
+                    val num = blocks.firstOrNull { b ->
+                        b.y in 1..280 &&
+                                b.text.matches(Regex("\\d{1,3}")) &&
+                                (b.text.toIntOrNull() ?: -1) in 1..GameRules.FARM_MAX_LEVEL
+                    }
+                    if (num != null) level = num.text.toIntOrNull() ?: -1
+                }
+                out.set(level)
+                latch.countDown()
+            }
+            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+            val v = out.get()
+            if (v in 1..GameRules.FARM_MAX_LEVEL) v else null
+        } finally {
+            bmp.recycle()
+        }
+    }
+
     private suspend fun navigateToFarm() {
         log("导航至农场...")
         val success = doNavigateToFarm()
@@ -336,13 +384,20 @@ class FarmStateMachine(
 
     private suspend fun scanCrops() {
         log("扫描作物状态...")
-        // v1.4.14: 双保险——未确认在农场页面则回到导航重试，杜绝在大厅乱点并虚假报告
+        // 避免在大厅乱点并虚假报告
         if (!confirmFarmScene()) {
             log("⚠当前未确认在农场页面，回到导航重试（避免在大厅误点）")
             transitionToInternal(FarmState.NavigateToFarm)
             return
         }
-        val cfg = ConfigManager.getConfig()
+        // v1.4.24: 自动校正农场等级——配置默认1，账号实际可为高阶（如Lv38），影响策略/地块数判断
+        var cfg = ConfigManager.getConfig()
+        val detected = detectFarmLevel()
+        if (detected != null && detected != cfg.farmLevel) {
+            cfg = cfg.copy(farmLevel = detected)
+            ConfigManager.save(cfg)
+            log("📈OCR检测农场等级=Lv$detected，已更新配置（原${cfg.farmLevel}）")
+        }
         if (dailyOperationCount >= cfg.maxDailyOperations) {
             log("已达每日操作上限 (${cfg.maxDailyOperations})，停止")
             transitionToInternal(FarmState.Idle)
@@ -566,8 +621,10 @@ class FarmStateMachine(
                 // 其中心偏右（实测文字中心约 (572,842)，而横幅可点区中心约 (486,810)）。
                 // 若按文字中心点击会落到"对战"区域误入模式选择页。对入口横幅做向左校正，
                 // 命中横幅主体可点区。偏移量基于真机/模拟器大厅实测的横幅卡片几何关系。
+                // v1.4.25: 此前仅 cx-=150（过度修正，且未调 y），实测点 (422,842) 偏离卡片中心
+                // (486,810)。按注释实测值改为 (cx-86, cy-32)，命中横幅主体。
                 if (t.contains("王者农场") || t.contains("周末双倍")) {
-                    if (cx > 300) cx -= 150
+                    if (cx > 300) { cx -= 86; cy -= 32 }
                 }
                 svc.click(cx, cy)
                 log("✅ OCR定位[$t]($cx,$cy) 已点击")
@@ -695,10 +752,10 @@ class FarmStateMachine(
                 log("⚠未确认在农场页面，本次浇水不计入（避免大厅误点）")
                 return 0
             }
-            return if (tryClickTexts("一键浇水", "全部浇水", "浇水壶")) 1 else {
-                log("⚠真实模式: 未找到浇水入口，本轮不计入虚拟进度")
-                0
-            }
+            // v1.4.24: 无"一键浇水"（低等级未解锁）时转逐株点作物浇水，避免低等级浇不了水
+            if (tryClickTexts("一键浇水", "全部浇水", "浇水壶")) return 1
+            log("⚠未找到一键浇水入口，转逐株浇水")
+            return waterCropsIndividually()
         }
         val cfg = ConfigManager.getConfig()
         var watered = 0
@@ -731,10 +788,10 @@ class FarmStateMachine(
                 log("⚠未确认在农场页面，本次收获不计入（避免大厅误点）")
                 return 0
             }
-            return if (tryClickTexts("一键收获", "全部收获", "成熟作物")) 1 else {
-                log("⚠真实模式: 未找到收获入口，本轮不计入虚拟进度")
-                0
-            }
+            // v1.4.24: 无"一键收获"（低等级未解锁）时转逐株点成熟作物收获
+            if (tryClickTexts("一键收获", "全部收获", "成熟作物")) return 1
+            log("⚠未找到一键收获入口，转逐株收获")
+            return harvestCropsIndividually()
         }
         var harvested = 0
         val ripe = kotlin.random.Random.nextInt(0, 6)
@@ -746,6 +803,77 @@ class FarmStateMachine(
             harvested++
         }
         return harvested
+    }
+
+    /**
+     * v1.4.24: 低等级农场无"一键浇水"时——OCR 定位每株作物的倒计时(m:ss)并逐个点击浇水。
+     * 仅点击作物区(y>200)的倒计时，避免误触顶部 UI；点击数即真实点击成功数。
+     */
+    private suspend fun waterCropsIndividually(): Int {
+        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return 0
+        val provider = screenshotProvider ?: return 0
+        val bmp = runCatching { provider() }.getOrNull() ?: return 0
+        return try {
+            val pos = java.util.concurrent.atomic.AtomicReference<List<Pair<Int, Int>>>(emptyList())
+            val latch = java.util.concurrent.CountDownLatch(1)
+            ocr.recognizeText(bmp) { _, blocks ->
+                val list = blocks
+                    .filter { it.y > 200 && Regex("\\d{1,2}:\\d{2}").containsMatchIn(it.text) }
+                    .map { it.x to it.y }
+                    .distinctBy { it.first }
+                pos.set(list)
+                latch.countDown()
+            }
+            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+            val targets = pos.get()
+            var count = 0
+            for ((x, y) in targets) {
+                if (!_isRunning.value || !scope.isActive) break
+                svc.click(x, y)
+                count++
+                log("逐株浇水: 点击作物($x,$y)")
+                delay(RandomDelay.uniform(600, 1100))
+            }
+            if (count == 0) log("逐株浇水: 未识别到作物倒计时，本轮不计")
+            count
+        } finally {
+            bmp.recycle()
+        }
+    }
+
+    /**
+     * v1.4.24: 低等级农场无"一键收获"时——OCR 定位成熟/可收获标识并逐个点击收获。
+     */
+    private suspend fun harvestCropsIndividually(): Int {
+        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return 0
+        val provider = screenshotProvider ?: return 0
+        val bmp = runCatching { provider() }.getOrNull() ?: return 0
+        return try {
+            val pos = java.util.concurrent.atomic.AtomicReference<List<Pair<Int, Int>>>(emptyList())
+            val latch = java.util.concurrent.CountDownLatch(1)
+            ocr.recognizeText(bmp) { _, blocks ->
+                val list = blocks
+                    .filter { it.y > 200 && (it.text.contains("可收获") || it.text.contains("成熟") || it.text.contains("收获")) }
+                    .map { it.x to it.y }
+                    .distinctBy { it.first }
+                pos.set(list)
+                latch.countDown()
+            }
+            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+            val targets = pos.get()
+            var count = 0
+            for ((x, y) in targets) {
+                if (!_isRunning.value || !scope.isActive) break
+                svc.click(x, y)
+                count++
+                log("逐株收获: 点击($x,$y)")
+                delay(RandomDelay.uniform(600, 1100))
+            }
+            if (count == 0) log("逐株收获: 未识别到成熟/可收获标识，本轮不计")
+            count
+        } finally {
+            bmp.recycle()
+        }
     }
 
     private suspend fun sellOrStoreInternal() {
