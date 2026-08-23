@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.25: 王者农场横幅点击按实测偏移 (cx-86,cy-32) 校正（原 -150 过度修正落点偏离卡片中心）
-        versionCode = 30
-        versionName = "1.4.25"
+        // v1.4.26: 浇水/收获/种植统一走"一键务农"（需靠近雕像），替换不可用的逐株OCR/按钮文字定位
+        versionCode = 31
+        versionName = "1.4.26"
     }
 
     buildTypes {

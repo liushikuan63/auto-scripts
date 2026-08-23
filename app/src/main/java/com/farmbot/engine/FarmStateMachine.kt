@@ -752,10 +752,9 @@ class FarmStateMachine(
                 log("⚠未确认在农场页面，本次浇水不计入（避免大厅误点）")
                 return 0
             }
-            // v1.4.24: 无"一键浇水"（低等级未解锁）时转逐株点作物浇水，避免低等级浇不了水
-            if (tryClickTexts("一键浇水", "全部浇水", "浇水壶")) return 1
-            log("⚠未找到一键浇水入口，转逐株浇水")
-            return waterCropsIndividually()
+            // v1.4.26: 浇水/收获/种植统一走"一键务农"（需靠近雕像才显示）：点"一键务农"→设置面板勾选→确定即自动执行。
+            // 此前找"一键浇水/浇水壶"文字（农场主界面并不存在，仅在一键务农面板内）与逐株OCR均不可用。
+            return doOneKeyFarming()
         }
         val cfg = ConfigManager.getConfig()
         var watered = 0
@@ -788,10 +787,8 @@ class FarmStateMachine(
                 log("⚠未确认在农场页面，本次收获不计入（避免大厅误点）")
                 return 0
             }
-            // v1.4.24: 无"一键收获"（低等级未解锁）时转逐株点成熟作物收获
-            if (tryClickTexts("一键收获", "全部收获", "成熟作物")) return 1
-            log("⚠未找到一键收获入口，转逐株收获")
-            return harvestCropsIndividually()
+            // v1.4.26: 收获与浇水同源，统一走"一键务农"（一次即可覆盖浇水/收获/种植）
+            return doOneKeyFarming()
         }
         var harvested = 0
         val ripe = kotlin.random.Random.nextInt(0, 6)
@@ -806,74 +803,25 @@ class FarmStateMachine(
     }
 
     /**
-     * v1.4.24: 低等级农场无"一键浇水"时——OCR 定位每株作物的倒计时(m:ss)并逐个点击浇水。
-     * 仅点击作物区(y>200)的倒计时，避免误触顶部 UI；点击数即真实点击成功数。
+     * v1.4.26: 浇水/收获/种植统一走"一键务农"。
+     * 王者农场主界面并无独立的"一键浇水/一键收获"文字按钮（它们位于"一键务农"设置面板内）；
+     * 且作物为纯画面、无 OCR 文本，逐株定位不可用。正确路径：
+     *   需靠近雕像才显示"一键务农" → 点击 → 面板内三项(浇水/收获/种植)默认勾选 → 点"确定"即自动统一执行。
+     * 未靠近雕像(找不到按钮)或面板未确认时如实返回 0，不假成功。
      */
-    private suspend fun waterCropsIndividually(): Int {
-        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return 0
-        val provider = screenshotProvider ?: return 0
-        val bmp = runCatching { provider() }.getOrNull() ?: return 0
-        return try {
-            val pos = java.util.concurrent.atomic.AtomicReference<List<Pair<Int, Int>>>(emptyList())
-            val latch = java.util.concurrent.CountDownLatch(1)
-            ocr.recognizeText(bmp) { _, blocks ->
-                val list = blocks
-                    .filter { it.y > 200 && Regex("\\d{1,2}:\\d{2}").containsMatchIn(it.text) }
-                    .map { it.x to it.y }
-                    .distinctBy { it.first }
-                pos.set(list)
-                latch.countDown()
-            }
-            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
-            val targets = pos.get()
-            var count = 0
-            for ((x, y) in targets) {
-                if (!_isRunning.value || !scope.isActive) break
-                svc.click(x, y)
-                count++
-                log("逐株浇水: 点击作物($x,$y)")
-                delay(RandomDelay.uniform(600, 1100))
-            }
-            if (count == 0) log("逐株浇水: 未识别到作物倒计时，本轮不计")
-            count
-        } finally {
-            bmp.recycle()
+    private suspend fun doOneKeyFarming(): Int {
+        if (!tryClickTexts("一键务农")) {
+            log("⚠未找到[一键务农]（需靠近雕像才显示），本轮跳过")
+            return 0
         }
-    }
-
-    /**
-     * v1.4.24: 低等级农场无"一键收获"时——OCR 定位成熟/可收获标识并逐个点击收获。
-     */
-    private suspend fun harvestCropsIndividually(): Int {
-        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return 0
-        val provider = screenshotProvider ?: return 0
-        val bmp = runCatching { provider() }.getOrNull() ?: return 0
-        return try {
-            val pos = java.util.concurrent.atomic.AtomicReference<List<Pair<Int, Int>>>(emptyList())
-            val latch = java.util.concurrent.CountDownLatch(1)
-            ocr.recognizeText(bmp) { _, blocks ->
-                val list = blocks
-                    .filter { it.y > 200 && (it.text.contains("可收获") || it.text.contains("成熟") || it.text.contains("收获")) }
-                    .map { it.x to it.y }
-                    .distinctBy { it.first }
-                pos.set(list)
-                latch.countDown()
-            }
-            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
-            val targets = pos.get()
-            var count = 0
-            for ((x, y) in targets) {
-                if (!_isRunning.value || !scope.isActive) break
-                svc.click(x, y)
-                count++
-                log("逐株收获: 点击($x,$y)")
-                delay(RandomDelay.uniform(600, 1100))
-            }
-            if (count == 0) log("逐株收获: 未识别到成熟/可收获标识，本轮不计")
-            count
-        } finally {
-            bmp.recycle()
+        delay(RandomDelay.uniform(900, 1600))
+        if (tryClickTexts("确定", "确认")) {
+            log("✓已确认一键务农，自动执行浇水/收获/种植")
+            delay(RandomDelay.uniform(2000, 3500))
+            return 1
         }
+        log("⚠一键务农设置面板未找到确定按钮")
+        return 0
     }
 
     private suspend fun sellOrStoreInternal() {
