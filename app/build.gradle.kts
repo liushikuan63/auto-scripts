@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.29: confirmFarmScene 容忍瞬态加载帧(10%/30%)，重试最多3次避免误判"不在农场"阻断浇水/收获
-        versionCode = 34
-        versionName = "1.4.29"
+        // v1.4.30: moveTowardsStatue改为向下逼近雕像(截图确认雕像在下方)，多方向鲁棒探测到"一键务农"
+        versionCode = 35
+        versionName = "1.4.30"
     }
 
     buildTypes {

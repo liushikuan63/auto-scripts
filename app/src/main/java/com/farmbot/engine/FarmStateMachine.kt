@@ -845,17 +845,33 @@ class FarmStateMachine(
      * "一键务农"需靠近雕像才显示；若角色不在雕像旁，按住摇杆向雕像方向拖动可移动角色。
      * 摇杆基准与方向为经验值；每次推动后复查"一键务农"是否出现，出现即认为已到达。
      */
+    /**
+     * v1.4.30: 模拟"移动方向键"（左下角虚拟摇杆）把角色推向雕像。
+     * 根据真机截图，雕像位于农场底部偏左下，角色起始位置在雕像上方——应**向下**走，上一版误用了"向上"。
+     * 采用多方向鲁棒探测：依次向下/左/右小幅推动，每推一次用 OCR 复查"一键务农"是否出现，出现即到达。
+     * 摇杆中心取左下角区域（按下点即摇杆中心，MOBA 式虚拟摇杆）。
+     */
     private suspend fun moveTowardsStatue(): Boolean {
         val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return false
         val joyX = 300
-        val joyY = 880
-        for (i in 0 until 4) {
+        val joyY = 840
+        // 依次尝试的方向（dx, dy，相对摇杆中心的拖动量）：优先向下(雕像在下方)，辅以水平微调
+        val dirs = listOf(
+            0 to 240,     // 下
+            -160 to 120,  // 左下
+            160 to 120,   // 右下
+            0 to 160      // 再下（补一步）
+        )
+        for (i in dirs.indices) {
             if (!_isRunning.value || !scope.isActive) return false
-            // 按住摇杆向上(略偏中)拖动约1.2s，驱动角色朝雕像方向移动
-            svc.swipe(joyX, joyY, joyX + 40, joyY - 300, 1200)
-            delay(RandomDelay.uniform(1000, 1800))
-            if (tryClickTexts("一键务农")) return true
-            log("朝雕像移动(第${i + 1}次)，仍未出现[一键务农]")
+            val (dx, dy) = dirs[i]
+            svc.swipe(joyX, joyY, joyX + dx, joyY + dy, 1200)
+            delay(RandomDelay.uniform(1000, 1600))
+            if (tryClickTexts("一键务农")) {
+                log("✅朝雕像移动成功(第${i + 1}步,方向+$dx+$dy)，[一键务农]已出现")
+                return true
+            }
+            log("朝雕像移动(方向+$dx+$dy,第${i + 1}步)，仍未出现[一键务农]")
         }
         return false
     }
