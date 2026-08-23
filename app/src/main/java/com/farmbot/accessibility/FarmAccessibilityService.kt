@@ -196,6 +196,9 @@ class FarmAccessibilityService : AccessibilityService() {
             dailyClicks++
             isServiceConnected = true
             Timber.d("Click ($actualX,$actualY) total=$totalClicks")
+        } else {
+            // v1.4.17: 派发失败可见化——常见原因：服务未连接 / 无障碍未开启 / 手势被系统拒绝
+            Logger.w("FarmAccessibilityService", "点击($actualX,$actualY) 派发失败（无效应服务是否连接、无障碍是否开启）")
         }
         return ok
     }
@@ -329,10 +332,11 @@ class FarmAccessibilityService : AccessibilityService() {
     private class GestureResultListener(private val tag: String) :
         GestureResultCallback() {
         override fun onCompleted(gestureDescription: GestureDescription?) {
-            Timber.v("Gesture ok: $tag")
+            // v1.4.17: 升级为可见日志，便于判断点击是否真的执行成功（此前 Timber.v 默认不可见）
+            Logger.i("FarmAccessibilityService", "手势完成: $tag")
         }
         override fun onCancelled(gestureDescription: GestureDescription?) {
-            Timber.w("Gesture cancelled: $tag")
+            Logger.w("FarmAccessibilityService", "手势被取消: $tag（可能被窗口切换/其它输入抢占）")
         }
     }
 }

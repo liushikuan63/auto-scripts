@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.16: 修复重试上限误用500导致无限点入口 + 点击时长延长提升命中率
-        versionCode = 21
-        versionName = "1.4.16"
+        // v1.4.17: 点击可观测性（手势完成/取消/派发失败可见化，便于诊断"点击未生效"）
+        versionCode = 22
+        versionName = "1.4.17"
     }
 
     buildTypes {
