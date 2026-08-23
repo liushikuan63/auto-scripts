@@ -13,9 +13,9 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.21: confirmFarmScene 补引导态农场元素（种植/仓库/去告示牌）
-        versionCode = 26
-        versionName = "1.4.21"
+        // v1.4.23: 好友拜访返回不再用裸词"农场"，避免误点大厅聊天面板"农场"标签
+        versionCode = 28
+        versionName = "1.4.23"
     }
 
     buildTypes {
