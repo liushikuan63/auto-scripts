@@ -51,6 +51,13 @@ class GameRulesTest {
         assertFalse(GameRules.isWeekendDouble(cal(Calendar.THURSDAY, 23, 59)))
     }
 
+    @Test
+    fun `距下一次双倍按分钟精确计算`() {
+        assertEquals(10L, GameRules.minutesUntilNextDouble(cal(Calendar.FRIDAY, 17, 50)))
+        assertEquals(60L, GameRules.minutesUntilNextDouble(cal(Calendar.FRIDAY, 17, 0)))
+        assertEquals(-1L, GameRules.minutesUntilNextDouble(cal(Calendar.SATURDAY, 12, 0)))
+    }
+
     // ===== 偷菜保护时间 =====
 
     @Test

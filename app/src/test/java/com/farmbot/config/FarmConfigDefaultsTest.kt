@@ -16,6 +16,11 @@ class FarmConfigDefaultsTest {
         assertEquals(FarmConfig.UpgradePriority.LAND_FIRST, c.upgradePriority)
         assertEquals(true, c.enableSteal)
         assertEquals(true, c.enableBless)
+        // v1.4.35: 默认关闭"优先偷菜"——必须先完成自家农场操作后才拜访好友农场
+        assertEquals(false, c.prioritySteal)
+        // v1.4.37: 种植配置默认为空（=按等级自动推荐经验/金币最高作物）
+        assertEquals("", c.weekdayCrop)
+        assertEquals("", c.weekendCrop)
         assertEquals(0.85, c.templateMatchThreshold, 0.001)
         assertEquals(true, c.enableLog)
     }

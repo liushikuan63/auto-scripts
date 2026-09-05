@@ -2,7 +2,6 @@ package com.farmbot.vision
 
 import org.junit.Assert.*
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -14,11 +13,8 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * Robolectric 集成测试：运行时需联网下载 android-all-instrumented JAR 到本地 Maven 仓库。
- * 沙箱/离线环境会因 "Failed to fetch maven artifact" 全部失败，故默认忽略。
- * 本地联网环境可直接移除 @Ignore 运行。
+ * Robolectric 集成测试：首次运行需下载 android-all-instrumented JAR。
  */
-@Ignore("依赖 Robolectric android-all 联网下载，沙箱环境不可用")
 @RunWith(RobolectricTestRunner::class)
 class ApkTemplateImporterTest {
 

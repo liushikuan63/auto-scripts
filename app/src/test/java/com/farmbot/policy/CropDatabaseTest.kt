@@ -103,4 +103,33 @@ class CropDatabaseTest {
         assertEquals("香蕉", CropDatabase.find("香蕉")?.name)
         assertNull(CropDatabase.find("不存在的作物"))
     }
+
+    // ===== v1.4.37 卡双倍选种 =====
+
+    @Test
+    fun `卡双倍选生长时长最接近目标`() {
+        // 距周五18:00约8小时 → 应选生长时长8h左右的作物（误差≤1h）
+        val pick8 = CropDatabase.closestToGrowHours(farmLevel = 99, hours = 8.0)
+        assertTrue(pick8 != null && kotlin.math.abs(pick8.growHours - 8.0) <= 1.0)
+        // 距双倍约30小时 → 应选32h长周期作物（误差≤2h）
+        val pick30 = CropDatabase.closestToGrowHours(farmLevel = 99, hours = 30.0)
+        assertTrue(pick30 != null && kotlin.math.abs(pick30.growHours - 30.0) <= 2.0)
+    }
+
+    @Test
+    fun `卡双倍受等级约束`() {
+        // Lv1 只有小麦(0.01h)，任何目标时长都只能返回小麦
+        val pick = CropDatabase.closestToGrowHours(farmLevel = 1, hours = 16.0)
+        assertEquals("小麦", pick?.name)
+        // Lv0 无可用作物 → null
+        assertNull(CropDatabase.closestToGrowHours(farmLevel = 0, hours = 16.0))
+    }
+
+    @Test
+    fun `卡双倍拒绝无效目标时长`() {
+        assertNull(CropDatabase.closestToGrowHours(farmLevel = 99, hours = 0.0))
+        assertNull(CropDatabase.closestToGrowHours(farmLevel = 99, hours = -1.0))
+        assertNull(CropDatabase.closestToGrowHours(farmLevel = 99, hours = Double.NaN))
+        assertNull(CropDatabase.closestToGrowHours(farmLevel = 99, hours = Double.POSITIVE_INFINITY))
+    }
 }
