@@ -12,6 +12,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.farmbot.MainActivity
 import com.farmbot.R
 import com.farmbot.accessibility.ForegroundAppDetector
@@ -127,11 +128,12 @@ class FloatingWindowService : Service() {
                 addAction(ACTION_HIDE_ALL)
                 addAction(ACTION_STOP_SELF)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(commandReceiver, f, RECEIVER_EXPORTED)
-            } else {
-                registerReceiver(commandReceiver, f)
-            }
+            ContextCompat.registerReceiver(
+                this,
+                commandReceiver,
+                f,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
         }
 
         Logger.i(TAG, "onCreate: FloatingWindowService 已启动为前台服务")

@@ -12,6 +12,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.farmbot.MainActivity
 import com.farmbot.engine.FarmEngine
 import com.farmbot.util.Logger
@@ -62,13 +63,15 @@ class FarmBotForegroundService : Service() {
                 ACTION_STOP -> { stopSelf(); FarmEngine.getInstance(applicationContext).stop() }
                 ACTION_PAUSE -> FarmEngine.getInstance(applicationContext).pause()
                 ACTION_RESUME -> {
-                    // v1.4.6: 恢复前提示录屏通道状态，避免无通道静默走 [模拟] 路径
+                    // 没有录屏通道时拒绝恢复，避免真实操作悄悄降级成模拟流程。
                     if (!com.farmbot.screenshot.ScreenshotService.isCapturing()) {
                         android.widget.Toast.makeText(
                             applicationContext,
-                            "⚠ 录屏通道未就绪，恢复后 OCR 定位不可用",
+                            "录屏通道未就绪，无法恢复引擎",
                             android.widget.Toast.LENGTH_LONG
                         ).show()
+                        Logger.w("FarmBotForegroundSvc", "拒绝恢复：录屏通道未就绪")
+                        return
                     }
                     FarmEngine.getInstance(applicationContext).start()
                 }
@@ -84,8 +87,7 @@ class FarmBotForegroundService : Service() {
         val filter = IntentFilter().apply {
             addAction(ACTION_STOP); addAction(ACTION_PAUSE); addAction(ACTION_RESUME); addAction(ACTION_WATER_NOW)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) registerReceiver(receiver, filter, RECEIVER_EXPORTED)
-        else registerReceiver(receiver, filter)
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         Logger.i("FarmBotForegroundSvc", "onCreate")
         collectLogsForNotification()
     }
@@ -127,9 +129,9 @@ class FarmBotForegroundService : Service() {
         val ctx = this
         val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE else PendingIntent.FLAG_UPDATE_CURRENT
         val openIntent = PendingIntent.getActivity(ctx, 1, Intent(ctx, MainActivity::class.java), flag)
-        val pauseIntent = PendingIntent.getBroadcast(ctx, 2, Intent(ACTION_PAUSE), flag)
-        val stopIntent = PendingIntent.getBroadcast(ctx, 3, Intent(ACTION_STOP), flag)
-        val waterIntent = PendingIntent.getBroadcast(ctx, 4, Intent(ACTION_WATER_NOW), flag)
+        val pauseIntent = PendingIntent.getBroadcast(ctx, 2, commandIntent(ACTION_PAUSE), flag)
+        val stopIntent = PendingIntent.getBroadcast(ctx, 3, commandIntent(ACTION_STOP), flag)
+        val waterIntent = PendingIntent.getBroadcast(ctx, 4, commandIntent(ACTION_WATER_NOW), flag)
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
@@ -143,6 +145,9 @@ class FarmBotForegroundService : Service() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .build()
     }
+
+    private fun commandIntent(action: String): Intent =
+        Intent(action).setPackage(packageName)
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(receiver) }

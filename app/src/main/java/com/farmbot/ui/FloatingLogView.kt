@@ -2,6 +2,7 @@ package com.farmbot.ui
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.graphics.Point
 import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
@@ -52,8 +53,21 @@ class FloatingLogView(context: Context) {
     private var collectJob: Job? = null
     private var minimized = false
 
-    private val screenWidth: Int get() = runCatching { wm.currentWindowMetrics.bounds.width() }.getOrDefault(1080)
-    private val screenHeight: Int get() = runCatching { wm.currentWindowMetrics.bounds.height() }.getOrDefault(2400)
+    private val screenWidth: Int get() = currentScreenSize().x
+    private val screenHeight: Int get() = currentScreenSize().y
+
+    private fun currentScreenSize(): Point = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = wm.currentWindowMetrics.bounds
+            Point(bounds.width(), bounds.height())
+        } else {
+            @Suppress("DEPRECATION")
+            Point().also { wm.defaultDisplay.getRealSize(it) }
+        }
+    }.getOrElse {
+        val metrics = appContext.resources.displayMetrics
+        Point(metrics.widthPixels, metrics.heightPixels)
+    }
 
     fun show(): Boolean {
         if (attached) return true
@@ -89,11 +103,12 @@ class FloatingLogView(context: Context) {
 
             // ===== 标题栏 =====
             val handle = TextView(appContext).apply {
-                text = "📋 FarmBot 日志"
+                text = appContext.getString(com.farmbot.R.string.floating_log_title)
                 textSize = 13f
                 setTextColor(0xFFFFFFFF.toInt())
                 setPadding(24, 18, 12, 18)
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                setOnClickListener { toggleMinimize() }
             }
             handle.setOnTouchListener(dragListener)
 
@@ -244,7 +259,7 @@ class FloatingLogView(context: Context) {
     private var startY = 0
     private var dragged = false
 
-    private val dragListener = View.OnTouchListener { _, ev ->
+    private val dragListener = View.OnTouchListener { view, ev ->
         when (ev.action) {
             MotionEvent.ACTION_DOWN -> {
                 downX = ev.rawX; downY = ev.rawY
@@ -272,10 +287,13 @@ class FloatingLogView(context: Context) {
             }
             MotionEvent.ACTION_UP -> {
                 if (!dragged) {
-                    // 单击把手 = 收缩/展开切换（保留旧版习惯）
-                    toggleMinimize()
+                    view.performClick()
                 }
                 true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                dragged = false
+                false
             }
             else -> false
         }

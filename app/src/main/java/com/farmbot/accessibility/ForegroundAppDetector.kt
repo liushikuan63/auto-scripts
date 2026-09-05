@@ -209,9 +209,9 @@ object ForegroundAppDetector {
             delay(TRANSIENT_WINDOW_MS + 50)
             val tc = transientCandidate
             val ts = transientStartedAt
-            if (tc == candidate && tc != null
+            if (tc == candidate
                 && System.currentTimeMillis() - ts >= TRANSIENT_WINDOW_MS) {
-                commitStable(tc)
+                commitStable(candidate)
             }
         }
     }

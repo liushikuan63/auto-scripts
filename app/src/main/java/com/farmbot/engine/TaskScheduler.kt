@@ -11,7 +11,9 @@ import com.farmbot.util.Logger
 import com.farmbot.work.WorkScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,13 +51,15 @@ class TaskScheduler(private val context: Context) {
 
     private val _isDailyBattleDone = MutableStateFlow(false)
     val isDailyBattleDone: StateFlow<Boolean> = _isDailyBattleDone.asStateFlow()
+    private var dailyBattleJob: Job? = null
 
-    init {
-        // 启动 WorkManager 兜底周期任务（15 分钟）
+    fun start() {
+        // 只在引擎运行时启用后台兜底，暂停/停止后再次启动会重新建立调度。
         runCatching {
             WorkScheduler.startPeriodicWatering(context)
             Logger.i(TAG, "WorkManager 兜底周期任务已启动")
         }.onFailure { Logger.e(TAG, "启动 WorkManager 失败", it) }
+        scheduleDailyBattleCheck()
     }
 
     fun getWaterInterval(): Int =
@@ -72,7 +76,7 @@ class TaskScheduler(private val context: Context) {
     fun scheduleNextWatering() {
         val intervalMin = getWaterInterval()
         val triggerAt = System.currentTimeMillis() + intervalMin * 60 * 1000L
-        val intent = Intent(context, WateringAlarmReceiver::class.java)
+        val intent = wateringIntent()
         val pi = PendingIntent.getBroadcast(
             context, ALARM_REQUEST_CODE, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -108,7 +112,7 @@ class TaskScheduler(private val context: Context) {
 
     fun scheduleImmediateWatering() {
         val triggerAt = System.currentTimeMillis() + 500L
-        val intent = Intent(context, WateringAlarmReceiver::class.java)
+        val intent = wateringIntent()
         val pi = PendingIntent.getBroadcast(
             context, ALARM_REQUEST_CODE, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -118,13 +122,15 @@ class TaskScheduler(private val context: Context) {
     }
 
     fun cancelAllAlarms() {
-        val intent = Intent(context, WateringAlarmReceiver::class.java)
+        val intent = wateringIntent()
         val pi = PendingIntent.getBroadcast(
             context, ALARM_REQUEST_CODE, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pi)
         runCatching { WorkScheduler.cancelPeriodicWatering(context) }
+        dailyBattleJob?.cancel()
+        dailyBattleJob = null
         _nextWateringAt.value = 0L
         Log.i(TAG, "已取消所有闹钟与 WorkManager 任务")
     }
@@ -145,7 +151,8 @@ class TaskScheduler(private val context: Context) {
     }
 
     fun scheduleDailyBattleCheck() {
-        scope.launch {
+        if (dailyBattleJob?.isActive == true) return
+        dailyBattleJob = scope.launch {
             while (isActive) {
                 val now = LocalTime.now()
                 if (now.hour in 8..23) {
@@ -157,6 +164,16 @@ class TaskScheduler(private val context: Context) {
             }
         }
         Log.i(TAG, "每日对战检查已启动")
+    }
+
+    private fun wateringIntent(): Intent =
+        Intent(context, WateringAlarmReceiver::class.java).apply {
+            action = WateringAlarmReceiver.ACTION_WATERING_ALARM
+        }
+
+    fun destroy() {
+        cancelAllAlarms()
+        scope.cancel()
     }
 
     fun getNextWateringTimeDisplay(): String {

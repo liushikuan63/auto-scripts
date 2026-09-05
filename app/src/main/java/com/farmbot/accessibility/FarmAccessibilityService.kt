@@ -79,6 +79,7 @@ class FarmAccessibilityService : AccessibilityService() {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var gameForegroundJob: Job? = null
+    private var pausedForGameBackground = false
 
     override fun onCreate() {
         super.onCreate()
@@ -129,19 +130,36 @@ class FarmAccessibilityService : AccessibilityService() {
                     val cfg = com.farmbot.config.ConfigManager.getConfig()
                     val state = engine.engineState.value
                     if (isGame) {
-                        // 游戏进入前台：若设置了自动启动且引擎已停止，则启动
+                        if (pausedForGameBackground && state != com.farmbot.engine.EngineState.PAUSED) {
+                            pausedForGameBackground = false
+                        }
+                        if (pausedForGameBackground && state == com.farmbot.engine.EngineState.PAUSED) {
+                            if (com.farmbot.screenshot.ScreenshotService.isCapturing()) {
+                                pausedForGameBackground = false
+                                Logger.i(TAG, "游戏回到前台且录屏通道就绪，恢复后台联动暂停的引擎")
+                                engine.start()
+                            } else {
+                                Logger.w(TAG, "游戏回到前台但录屏通道未就绪，保持暂停")
+                            }
+                            return@runCatching
+                        }
+                        // 游戏进入前台：若设置了自动启动且引擎已停止，则启动。
+                        // v1.4.34: 真机动作入口必须先校验录屏截图通道（v1.4.5 纪律）——
+                        // 王者农场为 SurfaceView，无障碍节点点击恒失败，无录屏通道时启动只会静默走 [模拟] 流程。
                         if (cfg.autoStartWhenGameForeground
                             && state == com.farmbot.engine.EngineState.STOPPED) {
-                            Logger.i(TAG, "检测到游戏进入前台，自动启动引擎")
-                            engine.start()
-                        } else if (state == com.farmbot.engine.EngineState.PAUSED) {
-                            // 暂停状态下回到游戏自动恢复
-                            engine.start()
+                            if (com.farmbot.screenshot.ScreenshotService.isCapturing()) {
+                                Logger.i(TAG, "检测到游戏进入前台且录屏通道就绪，自动启动引擎")
+                                engine.start()
+                            } else {
+                                Logger.w(TAG, "检测到游戏进入前台但未授权录屏，拒绝自动启动（避免无通道静默走 [模拟]）")
+                            }
                         }
                     } else {
                         // 游戏离开前台：若设置了离开暂停，则暂停引擎
                         if (cfg.pauseWhenGameBackground
                             && state == com.farmbot.engine.EngineState.RUNNING) {
+                            pausedForGameBackground = true
                             Logger.i(TAG, "检测到游戏离开前台，暂停引擎")
                             engine.pause()
                         }

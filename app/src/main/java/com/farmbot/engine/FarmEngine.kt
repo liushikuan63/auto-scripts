@@ -83,9 +83,10 @@ class FarmEngine private constructor(private val context: Context) {
         screenshotService = svc
         collector.setCaptureService(svc)
         // v1.4.3: 为状态机提供截图通道（OCR文字定位点击的关键依赖）
-        stateMachine.setScreenshotProvider(
-            if (svc != null) ({ svc.captureBitmap() }) else null
-        )
+        val provider = svc?.let { captureService ->
+            { captureService.captureBitmap() }
+        }
+        stateMachine.setScreenshotProvider(provider)
         Log.i(TAG, "setScreenshotService ok: ${svc != null}")
     }
 
@@ -122,7 +123,7 @@ class FarmEngine private constructor(private val context: Context) {
         _statusMessage.value = "引擎运行中"
         Log.i(TAG, "农场引擎启动 (dailyLimit=${ConfigManager.getConfig().maxDailyOperations})")
         stateMachine.start()
-        taskScheduler.scheduleDailyBattleCheck()
+        taskScheduler.start()
     }
 
     fun pause() {
@@ -149,11 +150,14 @@ class FarmEngine private constructor(private val context: Context) {
     }
 
     fun triggerWateringNow() {
-        if (_engineState.value == EngineState.STOPPED) start()
-        else {
-            Log.i(TAG, "触发浇水任务")
-            stateMachine.transitionTo(FarmState.NavigateToFarm)
+        // v1.4.34: 引擎已停止时不隐式启动（延续 v1.4.6 治理）。此前 STOPPED 时调 start()，
+        // 导致 WorkManager 兜底周期任务 / 开机广播在应用启动或重启后静默开跑 [模拟] 流程无休止重试。
+        if (_engineState.value != EngineState.RUNNING) {
+            Log.w(TAG, "引擎未运行，忽略触发浇水（state=${_engineState.value}）")
+            return
         }
+        Log.i(TAG, "触发浇水任务")
+        stateMachine.transitionTo(FarmState.NavigateToFarm)
     }
 
     /** 触发异常恢复测试（调试用） */
@@ -167,6 +171,8 @@ class FarmEngine private constructor(private val context: Context) {
 
     fun destroy() {
         stop()
+        stateMachine.destroy()
+        taskScheduler.destroy()
         runCatching { ocr.shutdown() }
         actionExecutor = null
         screenshotService = null
