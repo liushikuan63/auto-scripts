@@ -44,6 +44,25 @@ class OcrHelper {
             }
     }
 
+    fun recognizeText(
+        bm: Bitmap,
+        region: android.graphics.Rect?,
+        cb: (fullText: String, blocks: List<TextBlock>) -> Unit
+    ) {
+        val target = createRegionBitmap(bm, region)
+        if (target == null) {
+            cb("", emptyList())
+            return
+        }
+        recognizeText(target) { text, blocks ->
+            try {
+                cb(text, blocks)
+            } finally {
+                if (target !== bm && !target.isRecycled) target.recycle()
+            }
+        }
+    }
+
     // ---------------- 倒计时解析 ----------------
 
     /**
@@ -59,9 +78,7 @@ class OcrHelper {
         bm: Bitmap, region: android.graphics.Rect? = null,
         cb: (seconds: Int) -> Unit
     ) {
-        val target = if (region != null)
-            Bitmap.createBitmap(bm, region.left, region.top, region.width(), region.height()) else bm
-        recognizeText(target) { text, _ ->
+        recognizeText(bm, region) { text, _ ->
             cb(parseCountdown(text))
         }
     }
@@ -108,11 +125,19 @@ class OcrHelper {
     // ---------------- 数字识别 ----------------
 
     fun recognizeNumber(bm: Bitmap, region: android.graphics.Rect? = null, cb: (Int?) -> Unit) {
-        val target = if (region != null)
-            Bitmap.createBitmap(bm, region.left, region.top, region.width(), region.height()) else bm
-        recognizeText(target) { text, _ ->
+        recognizeText(bm, region) { text, _ ->
             cb(text.filter { it.isDigit() }.toIntOrNull())
         }
+    }
+
+    private fun createRegionBitmap(bm: Bitmap, region: android.graphics.Rect?): Bitmap? {
+        if (region == null) return bm
+        val left = region.left.coerceIn(0, bm.width)
+        val top = region.top.coerceIn(0, bm.height)
+        val right = region.right.coerceIn(left, bm.width)
+        val bottom = region.bottom.coerceIn(top, bm.height)
+        if (right <= left || bottom <= top) return null
+        return Bitmap.createBitmap(bm, left, top, right - left, bottom - top)
     }
 
     // ---------------- 包含/定位文字 ----------------

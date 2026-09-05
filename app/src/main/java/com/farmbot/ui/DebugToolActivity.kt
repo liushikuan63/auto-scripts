@@ -66,7 +66,6 @@ class DebugToolActivity : ComponentActivity() {
         var rr by remember { mutableStateOf("1080") }
         var rb by remember { mutableStateOf("1950") }
         // 画刷
-        val crossPaint = Paint().apply { color = Color.RED; strokeWidth = 4f; style = Paint.Style.STROKE }
         val rectPaint = Paint().apply { color = Color.GREEN; strokeWidth = 6f; style = Paint.Style.STROKE }
 
         Scaffold(topBar = {
@@ -145,7 +144,7 @@ class DebugToolActivity : ComponentActivity() {
                     Button(onClick = {
                         val bm = lastShot ?: return@Button
                         val r = safeRect(bm, rl, rt, rr, rb) ?: return@Button
-                        ocr.recognizeText(bm) { full, _ ->
+                        ocr.recognizeText(bm, r) { full, _ ->
                             runOnUiThread { logText += "[OCR全文] $full\n" }
                         }
                     }, modifier = Modifier.weight(1f)) { Text("OCR 全文") }
@@ -183,8 +182,13 @@ class DebugToolActivity : ComponentActivity() {
         val y = t.toIntOrNull() ?: return null
         val x2 = r.toIntOrNull() ?: return null
         val y2 = b.toIntOrNull() ?: return null
-        return Rect(x.coerceIn(0, bm.width - 1), y.coerceIn(0, bm.height - 1),
-            x2.coerceIn(0, bm.width), y2.coerceIn(0, bm.height))
+        val result = Rect(
+            x.coerceIn(0, bm.width - 1),
+            y.coerceIn(0, bm.height - 1),
+            x2.coerceIn(0, bm.width),
+            y2.coerceIn(0, bm.height)
+        )
+        return result.takeIf { it.width() > 0 && it.height() > 0 }
     }
 
     private suspend fun takeScreenshot(): Bitmap? = withContext(Dispatchers.IO) {
@@ -198,6 +202,7 @@ class DebugToolActivity : ComponentActivity() {
         try {
             org.opencv.android.Utils.matToBitmap(mat, bm); bm
         } catch (_: Throwable) {
+            bm.recycle()
             // fallback：画个空占位图
             val blank = Bitmap.createBitmap(720, 1280, Bitmap.Config.ARGB_8888)
             val c = Canvas(blank); c.drawColor(Color.LTGRAY)

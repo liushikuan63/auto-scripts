@@ -80,7 +80,6 @@ class TemplateCollector(private val context: Context) {
     private val collected = mutableListOf<String>()
 
     init {
-        val base = File(context.getExternalFilesDir(null), TEMPLATE_DIR).parentFile!!
         templateDir = File(context.getExternalFilesDir(null), TEMPLATE_DIR)
         cropDir = File(templateDir, "crops")
         buttonDir = File(templateDir, "buttons")
@@ -143,7 +142,11 @@ class TemplateCollector(private val context: Context) {
                 }
                 val cropped = Bitmap.createBitmap(bm, safe.left, safe.top, safe.width(), safe.height())
                 val file = File(categoryDir(step.category), step.templateName)
-                FileOutputStream(file).use { cropped.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                try {
+                    FileOutputStream(file).use { cropped.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                } finally {
+                    if (cropped !== bm) cropped.recycle()
+                }
                 collected.add(step.templateName)
                 Logger.i("TemplateCollector", "Template saved: ${file.absolutePath} (${cropped.width}x${cropped.height})")
                 cb(true, file.absolutePath)
@@ -178,7 +181,12 @@ class TemplateCollector(private val context: Context) {
         if (svc != null) {
             val mat = svc.captureFresh()
             if (mat != null) {
-                cb(matToBitmap(mat))
+                val bitmap = matToBitmap(mat)
+                try {
+                    cb(bitmap)
+                } finally {
+                    bitmap?.recycle()
+                }
                 return
             }
         }
@@ -299,13 +307,18 @@ class TemplateCollector(private val context: Context) {
         val w = bm.width; val h = bm.height
         val bottom = Bitmap.createBitmap(bm, 0, (h * 0.8f).toInt(), w, (h * 0.2f).toInt())
         val top = Bitmap.createBitmap(bm, 0, 0, w, (h * 0.15f).toInt())
-        val (br, bg, bb) = averageColor(bottom)
-        val (tr, tg, _) = averageColor(top)
-        return when {
-            bg > 150 -> ScreenType.BATTLE
-            tr > 80 -> ScreenType.FARM
-            bb > 120 -> ScreenType.FRIEND_LIST
-            else -> ScreenType.UNKNOWN
+        return try {
+            val (_, bottomGreen, bottomBlue) = averageColor(bottom)
+            val (topRed, _, _) = averageColor(top)
+            when {
+                bottomGreen > 150 -> ScreenType.BATTLE
+                topRed > 80 -> ScreenType.FARM
+                bottomBlue > 120 -> ScreenType.FRIEND_LIST
+                else -> ScreenType.UNKNOWN
+            }
+        } finally {
+            bottom.recycle()
+            top.recycle()
         }
     }
 

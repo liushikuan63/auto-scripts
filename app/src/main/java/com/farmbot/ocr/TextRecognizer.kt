@@ -99,7 +99,7 @@ class TextRecognizer(private val context: Context) {
                     for (line in block.lines) {
                         val elements = mutableListOf<TextElement>()
                         for (element in line.elements) {
-                            val confidence = element.confidence ?: 1.0f
+                            val confidence = element.confidence
                             if (confidence >= minConfidence) {
                                 elements.add(
                                     TextElement(
@@ -142,12 +142,12 @@ class TextRecognizer(private val context: Context) {
                     }
                 }
 
-                scaledBitmap.recycle()
+                if (scaledBitmap !== bitmap) scaledBitmap.recycle()
                 callback(OcrResult(results))
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "OCR failed", e)
-                scaledBitmap.recycle()
+                if (scaledBitmap !== bitmap) scaledBitmap.recycle()
                 callback(OcrResult(emptyList()))
             }
     }
@@ -191,7 +191,13 @@ class TextRecognizer(private val context: Context) {
 
         fun getTextsInRegion(rect: Rect): List<String> {
             return blocks.flatMap { block ->
-                block.lines.map { it.text }
+                block.lines.filter { line ->
+                    val lineBounds = line.boundingBox
+                    lineBounds?.let { Rect.intersects(it, rect) }
+                        ?: line.elements.any { element ->
+                            element.boundingBox?.let { Rect.intersects(it, rect) } == true
+                        }
+                }.map { it.text }
             }.filter { it.isNotEmpty() }
         }
 

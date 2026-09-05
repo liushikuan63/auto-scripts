@@ -60,7 +60,6 @@ class AssetTemplateInstaller(private val context: Context) {
             copied
         }.onFailure {
             Logger.e("AssetTemplateInstaller", "installIfNeeded", it)
-            0
         }.getOrDefault(0)
     }
 
