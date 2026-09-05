@@ -25,6 +25,9 @@ data class FarmConfig(
     // ===== 偷菜/祝福 =====
     val enableSteal: Boolean = true,
     val enableBless: Boolean = true,
+    // v1.4.35: 优先偷菜——启用时跳过自家农场(种植/浇水/收获)，优先拜访好友农场偷菜；
+    // 默认 false：必须优先完成自家农场全部操作后才进入好友农场。
+    val prioritySteal: Boolean = false,
 
     // ===== 农场玩法（S43 最新机制）=====
     val farmLevel: Int = 1,                              // 当前农场等级（决定可用功能与推荐作物）
@@ -35,6 +38,9 @@ data class FarmConfig(
     val blessDailyLimit: Int = 10,                       // 每日祝福上限
     val weekendDoubleAware: Boolean = true,              // 周末双倍感知（卡点浇水+双倍期出售）
     val hoardUntilWeekend: Boolean = false,              // 高价值作物囤到周末双倍再卖
+    // v1.4.37: 种植配置——右下角种植按钮未选种子时按此选种（空串=按等级自动推荐）
+    val weekdayCrop: String = "",                        // 周一~周四种植作物（默认自动推荐经验最高）
+    val weekendCrop: String = "",                        // 周末双倍期作物（默认自动推荐金币最高）
 
     // ===== 高级操作参数 =====
     val operationDelayMinMs: Int = 800,        // 最小操作延迟

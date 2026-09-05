@@ -120,6 +120,16 @@ object CropDatabase {
     fun heroCrops(farmLevel: Int): List<CropInfo> =
         availableCrops(farmLevel).filter { it.heroName != null }
 
+    /**
+     * 卡双倍选种：选生长时长最接近目标小时数的作物（目标=周五18:00双倍开启时刚好成熟）。
+     * 浇水约缩短25%生长时间，此处按自然成熟时长近似匹配。
+     */
+    fun closestToGrowHours(farmLevel: Int, hours: Double): CropInfo? =
+        if (!hours.isFinite() || hours <= 0.0) null
+        else availableCrops(farmLevel)
+                .filter { it.growHours > 0 }
+                .minByOrNull { kotlin.math.abs(it.growHours - hours) }
+
     /** 按名称查找 */
     fun find(name: String): CropInfo? = CROPS.firstOrNull { it.name == name }
 }

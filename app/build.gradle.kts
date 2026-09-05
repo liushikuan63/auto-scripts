@@ -13,9 +13,13 @@ android {
         applicationId = "com.farmbot"
         minSdk = 29
         targetSdk = 36
-        // v1.4.30: moveTowardsStatue改为向下逼近雕像(截图确认雕像在下方)，多方向鲁棒探测到"一键务农"
-        versionCode = 35
-        versionName = "1.4.30"
+        // v1.4.33: 一键务农图标点击偏移按实测(cx-40,cy-58)命中圆形按钮主体(此前cy-80偏上未打开面板)
+        // v1.4.34: 修复引擎停止后由 WorkManager 兜底任务/开机广播静默隐式启动的回归
+        // v1.4.35: ①修复moveTowardsStatue方向(向上朝雕像,此前向下推无法靠近) ②流程控制: 默认自家农场优先 + 优先偷菜开关
+        // v1.4.36: 开垦主动化：配置门控(expandAlways/upgradeExpandAfter真正生效) + 需开垦时先确认在自家农场再主动找开垦入口
+        // v1.4.37: ①一键务农修复(点齿轮开设置面板→确定) ②成熟检测修复 ③种植配置(平日/周末作物+卡双倍) ④地块走位(开垦/祝福/偷菜先走到对应地块)
+        versionCode = 42
+        versionName = "1.4.37"
     }
 
     buildTypes {

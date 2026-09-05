@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.farmbot.config.FarmConfig
+import com.farmbot.policy.CropDatabase
 import com.farmbot.ui.theme.GreenPrimary
 import com.farmbot.vision.ApkTemplateImporter
 import com.farmbot.vision.ApkResourceReader
@@ -63,7 +66,6 @@ fun SettingsContent(
     onConfigChange: (FarmConfig) -> Unit,
     onClose: () -> Unit
 ) {
-    val context = LocalContext.current
     var localConfig by remember { mutableStateOf(config) }
 
     // f5修复: 设置页可滚动，避免小屏溢出
@@ -297,12 +299,31 @@ fun SettingsContent(
 
             Spacer(Modifier.height(8.dp))
 
+            // v1.4.37: 种植配置——右下角种植按钮未选种子时按此选种（空=按等级自动推荐）
+            CropPickerRow("周一~周四种植作物", localConfig.weekdayCrop, localConfig.farmLevel) { crop ->
+                localConfig = localConfig.copy(weekdayCrop = crop)
+                onConfigChange(localConfig)
+            }
+            Spacer(Modifier.height(6.dp))
+            CropPickerRow("周末双倍作物", localConfig.weekendCrop, localConfig.farmLevel) { crop ->
+                localConfig = localConfig.copy(weekendCrop = crop)
+                onConfigChange(localConfig)
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             SwitchRow("遵守偷菜保护时间(0~8点)", localConfig.respectStealProtection) {
                 localConfig = localConfig.copy(respectStealProtection = it)
                 onConfigChange(localConfig)
             }
             SwitchRow("先偷菜后祝福", localConfig.stealBeforeBless) {
                 localConfig = localConfig.copy(stealBeforeBless = it)
+                onConfigChange(localConfig)
+            }
+            // v1.4.35: 流程控制——默认先完成自家农场(种植/浇水/收获)后才进入好友农场；
+            // 开启后跳过自家农场、优先拜访好友农场偷菜。
+            SwitchRow("优先偷菜（跳过自家农场，先访好友）", localConfig.prioritySteal) {
+                localConfig = localConfig.copy(prioritySteal = it)
                 onConfigChange(localConfig)
             }
             SwitchRow("周末双倍策略(卡点浇水)", localConfig.weekendDoubleAware) {
@@ -560,6 +581,53 @@ private fun CropStrategySelector(
                     )
                 }
             )
+        }
+    }
+}
+
+/**
+ * v1.4.37: 种植作物选择行——下拉列表按当前农场等级列出可种作物，空选项=按策略自动推荐。
+ */
+@Composable
+private fun CropPickerRow(
+    label: String,
+    selected: String,
+    farmLevel: Int,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = remember(farmLevel) {
+        listOf("" to "自动推荐") + CropDatabase.availableCrops(farmLevel).map { it.name to "${it.name}(${it.growHours}h)" }
+    }
+    val selectedLabel = selected.takeIf { current -> options.any { it.first == current } } ?: ""
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            color = Color(0xFF333333),
+            modifier = Modifier.weight(1f)
+        )
+        Box {
+            OutlinedButton(onClick = { expanded = true }) {
+                Text(
+                    text = if (selectedLabel.isBlank()) "自动推荐" else selectedLabel,
+                    fontSize = 12.sp
+                )
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { (value, display) ->
+                    DropdownMenuItem(
+                        text = { Text(display, fontSize = 12.sp) },
+                        onClick = {
+                            onSelect(value)
+                            expanded = false
+                        }
+                    )
+                }
+            }
         }
     }
 }

@@ -15,11 +15,14 @@ import com.farmbot.config.FarmConfig.Companion.DEFAULT
 import com.farmbot.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 
 /**
@@ -32,6 +35,10 @@ object ConfigManager {
     private lateinit var appContext: Context
     private lateinit var sp: android.content.SharedPreferences
     @Volatile private var cached: FarmConfig = DEFAULT
+    private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val persistenceMutex = Mutex()
+    private val generationLock = Any()
+    @Volatile private var saveGeneration = 0L
 
     private val SP_NAME = "farmbot_config_v1"
 
@@ -67,10 +74,16 @@ object ConfigManager {
         .toFarmConfig()
 
     suspend fun saveAsync(new: FarmConfig) {
-        requireContext().configStore.edit { p -> new.writeTo(p) }
-        cached = new
-        // 同步写入 SP 以便非协程代码也能立刻读取
-        saveToSp(new)
+        val generation = synchronized(generationLock) { ++saveGeneration }
+        persistenceMutex.withLock {
+            if (generation != saveGeneration) return
+            requireContext().configStore.edit { p -> new.writeTo(p) }
+            if (generation == saveGeneration) {
+                cached = new
+                // 同步写入 SP 以便非协程代码也能立刻读取
+                saveToSp(new)
+            }
+        }
     }
 
     // ========================================================
@@ -82,10 +95,16 @@ object ConfigManager {
     fun save(new: FarmConfig) {
         cached = new
         saveToSp(new)
-        // 尝试异步写入 DataStore（失败不影响）
-        runCatching {
-            CoroutineScope(Dispatchers.IO).launch {
-                runCatching { saveAsync(new) }
+        val generation = synchronized(generationLock) { ++saveGeneration }
+        // 串行持久化且只写入最新版本，避免快速连续保存时旧协程覆盖新配置。
+        persistenceScope.launch {
+            persistenceMutex.withLock {
+                if (generation != saveGeneration) return@withLock
+                runCatching {
+                    requireContext().configStore.edit { p -> new.writeTo(p) }
+                }.onFailure {
+                    Logger.e("ConfigManager", "save to DataStore failed", it)
+                }
             }
         }
     }
@@ -114,6 +133,7 @@ object ConfigManager {
             perfectMode = sp.getBoolean("perfect_mode", DEFAULT.perfectMode),
             enableSteal = sp.getBoolean("enable_steal", DEFAULT.enableSteal),
             enableBless = sp.getBoolean("enable_bless", DEFAULT.enableBless),
+            prioritySteal = sp.getBoolean("priority_steal", DEFAULT.prioritySteal),
             farmLevel = sp.getInt("farm_level", DEFAULT.farmLevel),
             cropStrategy = sp.getString("crop_strategy", DEFAULT.cropStrategy.name)
                 ?.let { runCatching { FarmConfig.CropStrategy.valueOf(it) }.getOrDefault(DEFAULT.cropStrategy) }
@@ -124,6 +144,8 @@ object ConfigManager {
             blessDailyLimit = sp.getInt("bless_daily_limit", DEFAULT.blessDailyLimit),
             weekendDoubleAware = sp.getBoolean("weekend_double_aware", DEFAULT.weekendDoubleAware),
             hoardUntilWeekend = sp.getBoolean("hoard_until_weekend", DEFAULT.hoardUntilWeekend),
+            weekdayCrop = sp.getString("weekday_crop", DEFAULT.weekdayCrop) ?: DEFAULT.weekdayCrop,
+            weekendCrop = sp.getString("weekend_crop", DEFAULT.weekendCrop) ?: DEFAULT.weekendCrop,
             operationDelayMinMs = sp.getInt("delay_min", DEFAULT.operationDelayMinMs),
             operationDelayMaxMs = sp.getInt("delay_max", DEFAULT.operationDelayMaxMs),
             maxDailyOperations = sp.getInt("max_daily_ops", DEFAULT.maxDailyOperations),
@@ -159,6 +181,7 @@ object ConfigManager {
             putBoolean("perfect_mode", c.perfectMode)
             putBoolean("enable_steal", c.enableSteal)
             putBoolean("enable_bless", c.enableBless)
+            putBoolean("priority_steal", c.prioritySteal)
             putInt("farm_level", c.farmLevel)
             putString("crop_strategy", c.cropStrategy.name)
             putBoolean("respect_steal_protection", c.respectStealProtection)
@@ -167,6 +190,8 @@ object ConfigManager {
             putInt("bless_daily_limit", c.blessDailyLimit)
             putBoolean("weekend_double_aware", c.weekendDoubleAware)
             putBoolean("hoard_until_weekend", c.hoardUntilWeekend)
+            putString("weekday_crop", c.weekdayCrop)
+            putString("weekend_crop", c.weekendCrop)
             putInt("delay_min", c.operationDelayMinMs)
             putInt("delay_max", c.operationDelayMaxMs)
             putInt("max_daily_ops", c.maxDailyOperations)
@@ -197,6 +222,7 @@ object ConfigManager {
         val PERF = booleanPreferencesKey("perfect_mode")
         val STEAL = booleanPreferencesKey("enable_steal")
         val BLESS = booleanPreferencesKey("enable_bless")
+        val PRIORITY_STEAL = booleanPreferencesKey("priority_steal")
         val FARM_LEVEL = intPreferencesKey("farm_level")
         val CROP_STRATEGY = stringPreferencesKey("crop_strategy")
         val RESPECT_PROTECT = booleanPreferencesKey("respect_steal_protection")
@@ -205,6 +231,8 @@ object ConfigManager {
         val BLESS_LIMIT = intPreferencesKey("bless_daily_limit")
         val WEEKEND_AWARE = booleanPreferencesKey("weekend_double_aware")
         val HOARD_WEEKEND = booleanPreferencesKey("hoard_until_weekend")
+        val WEEKDAY_CROP = stringPreferencesKey("weekday_crop")
+        val WEEKEND_CROP = stringPreferencesKey("weekend_crop")
         val DL_MIN = intPreferencesKey("delay_min")
         val DL_MAX = intPreferencesKey("delay_max")
         val MAX_DAILY = intPreferencesKey("max_daily_ops")
@@ -240,6 +268,7 @@ object ConfigManager {
             perfectMode = this[Keys.PERF] ?: def.perfectMode,
             enableSteal = this[Keys.STEAL] ?: def.enableSteal,
             enableBless = this[Keys.BLESS] ?: def.enableBless,
+            prioritySteal = this[Keys.PRIORITY_STEAL] ?: def.prioritySteal,
             farmLevel = this[Keys.FARM_LEVEL] ?: def.farmLevel,
             cropStrategy = (this[Keys.CROP_STRATEGY] ?: def.cropStrategy.name).let {
                 runCatching { FarmConfig.CropStrategy.valueOf(it) }.getOrDefault(def.cropStrategy)
@@ -250,6 +279,8 @@ object ConfigManager {
             blessDailyLimit = this[Keys.BLESS_LIMIT] ?: def.blessDailyLimit,
             weekendDoubleAware = this[Keys.WEEKEND_AWARE] ?: def.weekendDoubleAware,
             hoardUntilWeekend = this[Keys.HOARD_WEEKEND] ?: def.hoardUntilWeekend,
+            weekdayCrop = this[Keys.WEEKDAY_CROP] ?: def.weekdayCrop,
+            weekendCrop = this[Keys.WEEKEND_CROP] ?: def.weekendCrop,
             operationDelayMinMs = this[Keys.DL_MIN] ?: def.operationDelayMinMs,
             operationDelayMaxMs = this[Keys.DL_MAX] ?: def.operationDelayMaxMs,
             maxDailyOperations = this[Keys.MAX_DAILY] ?: def.maxDailyOperations,
@@ -280,6 +311,7 @@ object ConfigManager {
         m[Keys.PERF] = perfectMode
         m[Keys.STEAL] = enableSteal
         m[Keys.BLESS] = enableBless
+        m[Keys.PRIORITY_STEAL] = prioritySteal
         m[Keys.FARM_LEVEL] = farmLevel
         m[Keys.CROP_STRATEGY] = cropStrategy.name
         m[Keys.RESPECT_PROTECT] = respectStealProtection
@@ -288,6 +320,8 @@ object ConfigManager {
         m[Keys.BLESS_LIMIT] = blessDailyLimit
         m[Keys.WEEKEND_AWARE] = weekendDoubleAware
         m[Keys.HOARD_WEEKEND] = hoardUntilWeekend
+        m[Keys.WEEKDAY_CROP] = weekdayCrop
+        m[Keys.WEEKEND_CROP] = weekendCrop
         m[Keys.DL_MIN] = operationDelayMinMs
         m[Keys.DL_MAX] = operationDelayMaxMs
         m[Keys.MAX_DAILY] = maxDailyOperations

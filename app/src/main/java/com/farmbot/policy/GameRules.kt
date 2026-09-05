@@ -35,13 +35,17 @@ object GameRules {
     /** 距离下一次双倍期开始的分钟数；若已在双倍期内返回 -1 */
     fun minutesUntilNextDouble(now: Calendar = Calendar.getInstance()): Long {
         if (isWeekendDouble(now)) return -1
-        val cal = (now.clone() as Calendar).apply {
-            add(Calendar.MINUTE, 1)
+        val nextStart = (now.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_WEEK, DOUBLE_START_DAY)
+            set(Calendar.HOUR_OF_DAY, DOUBLE_START_HOUR)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
         }
-        while (!isWeekendDouble(cal)) {
-            cal.add(Calendar.MINUTE, 30)
+        if (!nextStart.after(now)) {
+            nextStart.add(Calendar.WEEK_OF_YEAR, 1)
         }
-        return (cal.timeInMillis - now.timeInMillis) / 60_000L
+        return (nextStart.timeInMillis - now.timeInMillis) / 60_000L
     }
 
     // ===== 昼夜系统（S45：只影响变异概率） =====
