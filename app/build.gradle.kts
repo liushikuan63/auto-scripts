@@ -70,7 +70,7 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.core:core-ktx:1.19.1")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
@@ -80,8 +80,8 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
 
     // Google ML Kit OCR（中文识别）
-    implementation("com.google.mlkit:text-recognition:16.0.0")
-    implementation("com.google.mlkit:text-recognition-chinese:16.0.0")
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
 
     // Jetpack Compose BOM 锁定版本
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
@@ -113,7 +113,7 @@ dependencies {
     implementation("com.jakewharton.timber:timber:5.0.1")
 
     // WorkManager（双通道兜底定时浇水）
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 
     // Kotlin Serialization（策略插件 JSON 持久化）
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
