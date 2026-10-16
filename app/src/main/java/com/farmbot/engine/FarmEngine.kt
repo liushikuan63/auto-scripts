@@ -57,7 +57,7 @@ class FarmEngine private constructor(private val context: Context) {
     // ========= 子系统 (可选装配) =========
     private var screenshotService: ScreenshotService? = null
     private var actionExecutor: ActionExecutor? = null
-    private var collector: TemplateCollector = TemplateCollector(context).also { stateMachine.setTemplateCollector(it) }
+    private var collector: TemplateCollector = TemplateCollector(context)
     private var matcher = TemplateMatcher()
     private var ocr = OcrHelper()
 
@@ -74,7 +74,6 @@ class FarmEngine private constructor(private val context: Context) {
     init {
         runCatching { ConfigManager.init(context) }
         collector = TemplateCollector(context)
-        stateMachine.setTemplateCollector(collector)
         // v1.4.8: 录屏授权失效（不可自愈故障）→ 状态机回调暂停引擎并发告警通知，替代数百次无效重试
         stateMachine.setOnCaptureLost { pause() }
     }
