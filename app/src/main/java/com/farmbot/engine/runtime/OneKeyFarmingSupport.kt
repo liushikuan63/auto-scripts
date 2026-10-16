@@ -6,7 +6,7 @@ import com.farmbot.policy.GameRules
 import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 
-internal class OneKeyFarmingSupport(private val rt: FarmRuntime, private val ocr: OcrClickSupport, private val movement: MovementSupport) {
+class OneKeyFarmingSupport(private val rt: FarmRuntime, private val ocr: OcrClickSupport, private val movement: MovementSupport) {
 
     /** 上次选种时间：一键务农每轮浇水/收获都会触发，限频避免反复开关种子面板 */
     @Volatile private var lastSeedSelectAt = 0L

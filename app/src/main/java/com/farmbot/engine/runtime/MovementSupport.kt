@@ -4,7 +4,7 @@ import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
-internal class MovementSupport(private val rt: FarmRuntime, private val ocr: OcrClickSupport) {
+class MovementSupport(private val rt: FarmRuntime, private val ocr: OcrClickSupport) {
 
     internal suspend fun walkNearText(
         keywords: List<String>,

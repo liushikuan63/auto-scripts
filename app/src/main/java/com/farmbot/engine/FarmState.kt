@@ -32,16 +32,3 @@ sealed class FarmState {
         UpgradeDecision -> "升级决策"
     }
 }
-
-/**
- * 单状态执行器契约
- *
- * 第 1 步只定义接口、不接线，供后续按状态拆分实现类时实现。
- */
-interface FarmStateHandler {
-    /** 本处理器负责的状态 */
-    val state: FarmState
-
-    /** 执行该状态的一轮逻辑 */
-    suspend fun execute()
-}

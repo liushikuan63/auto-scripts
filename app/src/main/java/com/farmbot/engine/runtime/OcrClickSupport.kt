@@ -12,7 +12,7 @@ internal data class OcrHit(
     val imageHeight: Int
 )
 
-internal class OcrClickSupport(private val rt: FarmRuntime) {
+class OcrClickSupport(private val rt: FarmRuntime) {
 
     internal suspend fun tryClickTexts(vararg texts: String): Boolean {
         if (rt.actionExecutor == null) return false   // 执行器未注入 → 模拟模式
