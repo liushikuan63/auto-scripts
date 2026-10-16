@@ -136,7 +136,7 @@ internal class CropOpsHandler(private val ctx: FarmStateContext, private val nav
         rt.log("[模拟] 无截图/点击通道，按地块数=$plots 走演示流程")
         for (i in 0 until plots) {
             if (!rt.isRunning.value || !rt.scope.isActive) break
-            if (rt.dailyOperationCount >= cfg.maxDailyOperations) break
+            if (hasReachedDailyLimit(rt.dailyOperationCount, cfg.maxDailyOperations)) break
             rt.log("浇水第 ${i + 1} 块地")
             delay(RandomDelay.uniform(
                 cfg.operationDelayMinMs.toLong(),
@@ -224,3 +224,12 @@ internal class CropOpsHandler(private val ctx: FarmStateContext, private val nav
     }
 
 }
+
+
+/**
+ * 每日操作上限判定
+ *
+ * 原实现为两处内联的 `dailyOperationCount >= cfg.maxDailyOperations`；
+ * 抽成单一真源后可直接用 JVM 单测钉住边界语义（达到上限即停止，不再发起本轮操作）。
+ */
+internal fun hasReachedDailyLimit(used: Int, max: Int): Boolean = used >= max

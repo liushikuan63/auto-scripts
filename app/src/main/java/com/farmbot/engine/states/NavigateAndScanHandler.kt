@@ -134,7 +134,7 @@ internal class NavigateAndScanHandler(private val ctx: FarmStateContext) {
             ConfigManager.save(cfg)
             rt.log("📈OCR检测农场等级=Lv$detected，已更新配置（原$previousLevel）")
         }
-        if (rt.dailyOperationCount >= cfg.maxDailyOperations) {
+        if (hasReachedDailyLimit(rt.dailyOperationCount, cfg.maxDailyOperations)) {
             rt.log("已达每日操作上限 (${cfg.maxDailyOperations})，停止")
             transitionToInternal(FarmState.Idle)
             return
