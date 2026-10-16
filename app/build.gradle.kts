@@ -56,6 +56,12 @@ android {
         jvmTarget = "17"
     }
 
+    // 单测里 android.util.Log 等框架方法返回默认值而不是抛 not mocked，
+    // FarmRuntime.log 依赖 Log.d，处理器级单测需要它
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
