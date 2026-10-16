@@ -42,8 +42,9 @@ class FarmRuntime {
     var dailyOperationCount = 0
     var lastStateTime = 0L
 
-    val ocr = OcrHelper()
-    val matcher = TemplateMatcher()
+    /** 懒初始化：OCR 依赖 ML Kit/Android，改懒加载后 FarmRuntime 可在纯 JVM 单测里构造 */
+    val ocr by lazy { OcrHelper() }
+    val matcher by lazy { TemplateMatcher() }
 
     @Volatile var actionExecutor: ActionExecutor? = null
 

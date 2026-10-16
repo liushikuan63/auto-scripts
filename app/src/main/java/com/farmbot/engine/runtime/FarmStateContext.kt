@@ -1,7 +1,6 @@
 package com.farmbot.engine.runtime
 
 import com.farmbot.engine.FarmState
-import com.farmbot.engine.TaskScheduler
 
 /**
  * 状态处理器的上下文契约
@@ -14,7 +13,6 @@ internal interface FarmStateContext {
     val ocrClick: OcrClickSupport
     val movement: MovementSupport
     val oneKey: OneKeyFarmingSupport
-    val taskScheduler: TaskScheduler
 
     /** 在当前状态的互斥锁内同步切换状态（等价于原 transitionToInternal） */
     fun gotoState(next: FarmState)

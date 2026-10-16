@@ -19,7 +19,6 @@ internal class CropOpsHandler(private val ctx: FarmStateContext, private val nav
     private val ocrClick get() = ctx.ocrClick
     private val movement get() = ctx.movement
     private val oneKey get() = ctx.oneKey
-    private val taskScheduler get() = ctx.taskScheduler
 
     private fun transitionToInternal(next: FarmState) = ctx.gotoState(next)
 

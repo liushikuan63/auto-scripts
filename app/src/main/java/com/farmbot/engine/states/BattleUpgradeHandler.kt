@@ -1,13 +1,14 @@
 package com.farmbot.engine.states
 
 import com.farmbot.engine.FarmState
+import com.farmbot.engine.TaskScheduler
 import com.farmbot.engine.runtime.FarmStateContext
 import com.farmbot.config.ConfigManager
 import com.farmbot.policy.GameRules
 import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 
-internal class BattleUpgradeHandler(private val ctx: FarmStateContext, private val navigator: NavigateAndScanHandler) {
+internal class BattleUpgradeHandler(private val ctx: FarmStateContext, private val navigator: NavigateAndScanHandler, private val taskScheduler: TaskScheduler) {
 
     /** 与原 FarmStateMachine 保持同一日志 TAG，避免日志筛选行为变化 */
     private val TAG = "FarmStateMachine"
@@ -17,7 +18,6 @@ internal class BattleUpgradeHandler(private val ctx: FarmStateContext, private v
     private val ocrClick get() = ctx.ocrClick
     private val movement get() = ctx.movement
     private val oneKey get() = ctx.oneKey
-    private val taskScheduler get() = ctx.taskScheduler
 
     private fun transitionToInternal(next: FarmState) = ctx.gotoState(next)
 

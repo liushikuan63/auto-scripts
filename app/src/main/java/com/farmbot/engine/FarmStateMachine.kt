@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicLong
  *  - 操作计数 + 日志注入 Logger
  */
 class FarmStateMachine(
-    override val taskScheduler: TaskScheduler
+    private val taskScheduler: TaskScheduler
 ) : FarmStateContext {
     companion object {
         private const val TAG = "FarmStateMachine"
@@ -72,7 +72,7 @@ class FarmStateMachine(
     private val navigator = NavigateAndScanHandler(this)
     private val cropOps = CropOpsHandler(this, navigator)
     private val social = SocialHandler(this)
-    private val battle = BattleUpgradeHandler(this, navigator)
+    private val battle = BattleUpgradeHandler(this, navigator, taskScheduler)
     private val recovery = RecoveryHandler(this)
 
     /** 在当前状态的互斥锁内同步切换状态（等价于原 transitionToInternal） */
