@@ -1,6 +1,9 @@
 package com.farmbot.engine
 
 import com.farmbot.engine.runtime.FarmRuntime
+import com.farmbot.engine.runtime.MovementSupport
+import com.farmbot.engine.runtime.OcrClickSupport
+import com.farmbot.engine.runtime.OneKeyFarmingSupport
 import com.farmbot.config.ConfigManager
 import com.farmbot.ocr.OcrHelper
 import com.farmbot.policy.CropDatabase
@@ -49,6 +52,15 @@ class FarmStateMachine(
 
     /** 运行时：共享依赖实例、计数与日志；业务实现一律通过 rt 访问 */
     private val rt = FarmRuntime()
+
+    /** OCR 定位与点击链路 */
+    private val ocrClick = OcrClickSupport(rt)
+
+    /** 走位支撑（依赖 OCR 定位） */
+    private val movement = MovementSupport(rt, ocrClick)
+
+    /** 一键务农与选种（依赖 OCR 定位与走位） */
+    private val oneKey = OneKeyFarmingSupport(rt, ocrClick, movement)
 
     /** 对外暴露的运行状态：委托运行时，FarmEngine / UI 的既有取用方式不变 */
     val isRunning: StateFlow<Boolean> get() = rt.isRunning
@@ -560,118 +572,6 @@ class FarmStateMachine(
      * v1.4.3: 新增第3级 —— 王者农场主体为 SurfaceView 渲染，节点树常为空，
      *         此前仅靠节点点击必然失败，OCR坐标层才是真实可用的自动点击路径。
      */
-    private suspend fun tryClickTexts(vararg texts: String): Boolean {
-        if (rt.actionExecutor == null) return false   // 执行器未注入 → 模拟模式
-        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return false
-        for (t in texts) {
-            if (svc.clickByText(t)) {
-                rt.log("✓ 已点击[$t]")
-                delay(RandomDelay.uniform(400, 900))
-                return true
-            }
-        }
-        for (t in texts) {
-            if (svc.clickByText(t, exact = false)) {
-                rt.log("✓ 已点击[$t](模糊匹配)")
-                delay(RandomDelay.uniform(400, 900))
-                return true
-            }
-        }
-        return tryClickViaOcr(svc, texts.toList())
-    }
-
-    /**
-     * v1.4.32: OCR 中文识别常丢失首字/某些字（实测"一键务农"被识别为"键务农"）。
-     * 当目标是"一键务农"时，折叠为"键务农"变体再匹配，避免 OCR 漏字导致找不到按钮。
-     */
-    private fun ocrTextVariant(clean: String, target: String): Boolean {
-        if (target == "一键务农") return clean.contains("键务农")
-        return false
-    }
-
-    /**
-     * OCR 坐标点击降级层（v1.4.3）：
-     * MediaProjection 截屏 → MLKit 中文OCR定位目标文字中心坐标 → dispatchGesture 真实点击。
-     */
-    private suspend fun tryClickViaOcr(
-        svc: com.farmbot.accessibility.FarmAccessibilityService,
-        texts: List<String>
-    ): Boolean {
-        val provider = rt.screenshotProvider ?: run {
-            rt.log("⚠截图通道未就绪（未授权录屏），跳过OCR定位")
-            return false
-        }
-        val bmp = runCatching { provider() }.getOrNull()
-        if (bmp == null) {
-            rt.log("⚠截屏失败（录屏授权可能已失效）")
-            return false
-        }
-        try {
-            // v1.4.4: 单次OCR识别全部文字块后本地匹配多目标，
-            // 替代此前逐词重复全屏识别（每词200~500ms，多词时延迟成倍增加）
-            val latch = java.util.concurrent.CountDownLatch(1)
-            var hit: OcrHelper.TextBlock? = null
-            var hitText: String? = null
-            rt.ocr.recognizeText(bmp) { _, blocks ->
-                val found = texts.firstNotNullOfOrNull { t ->
-                    blocks.firstOrNull { b ->
-                        val clean = b.text.replace("\\s".toRegex(), "")
-                        clean.contains(t) || ocrTextVariant(clean, t)
-                    }?.let { t to it }
-                }
-                if (found != null) { hitText = found.first; hit = found.second }
-                latch.countDown()
-            }
-            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
-            val target = hit
-            val t = hitText
-            if (target != null && t != null) {
-                // OcrHelper.TextBlock 的 x/y 已经是边界框中心，不可再次叠加半宽/半高。
-                var cx = target.x
-                var cy = target.y
-                val scaleX = bmp.width / 1920f
-                val scaleY = bmp.height / 1080f
-                // v1.4.20: 「王者农场 周末双倍」为横幅卡片，OCR 只命中"王者农场"文字块，
-                // 其中心偏右（实测文字中心约 (572,842)，而横幅可点区中心约 (486,810)）。
-                // 若按文字中心点击会落到"对战"区域误入模式选择页。对入口横幅做向左校正，
-                // 命中横幅主体可点区。偏移量基于真机/模拟器大厅实测的横幅卡片几何关系。
-                // v1.4.25: 此前仅 cx-=150（过度修正，且未调 y），实测点 (422,842) 偏离卡片中心
-                // (486,810)。按注释实测值改为 (cx-86, cy-32)，命中横幅主体。
-                if (t.contains("王者农场") || t.contains("周末双倍")) {
-                    if (cx > 300 * scaleX) {
-                        cx -= (86 * scaleX).toInt()
-                        cy -= (32 * scaleY).toInt()
-                    }
-                }
-                // v1.4.28: 「一键务农」为蓝色圆形图标+下方文字标签，OCR 命中标签文字，可点的圆图标在其上方。
-                // 点标签中心会落在图标下方导致面板不开（实测日志：点(1330,688)后仍停留在农场主界面）。
-                // 向上偏移命中圆形图标。
-                // v1.4.33: 实测文字中心(1330,688)、图标中心约(1290,630)，按 `cx-40, cy-58` 命中圆形按钮主体。
-                if (t.contains("一键务农")) {
-                    if (cy > 200 * scaleY) {
-                        cx -= (40 * scaleX).toInt()
-                        cy -= (58 * scaleY).toInt()
-                    }
-                }
-                svc.click(cx, cy)
-                rt.log("✅ OCR定位[$t]($cx,$cy) 已点击")
-                delay(RandomDelay.uniform(600, 1200))
-                return true
-            }
-            rt.log("⚠OCR未在屏幕中找到: ${texts.joinToString("/")}")
-        } finally {
-            bmp.recycle()
-        }
-        return false
-    }
-
-    /** 无障碍是否处于可用状态（执行器注入 + 服务连接） */
-    private fun isRealMode(): Boolean =
-            rt.actionExecutor != null &&
-            com.farmbot.accessibility.FarmAccessibilityService.getInstance() != null
-
-    // ========== 内部实现占位（由 ActionExecutor/ScreenController 替换） ==========
-
     private suspend fun navigateToFarmInternal(): Boolean {
         val gamePkg = "com.tencent.tmgp.sgame"
         // v1.4.4: 游戏不在前台时经系统真实拉起游戏并等待启动（此前为纯日志模拟且恒返回成功）
@@ -716,7 +616,7 @@ class FarmStateMachine(
         }
         // 游戏在前台：三级降级链点击农场入口
         rt.log("真实导航: 点击农场入口（节点精确→模糊→OCR坐标）")
-        val entered = tryClickTexts("王者农场", "周末双倍", "进入农场", "去农场", "我的农场")
+        val entered = ocrClick.tryClickTexts("王者农场", "周末双倍", "进入农场", "去农场", "我的农场")
         if (entered) {
             // v1.4.14: 点击入口后轮询用 OCR 确认进入农场（农场加载/OCR 识别需要时间），
             // 最多约 12s；未确认则返回 false 进入恢复流程，绝不误入后续状态。
@@ -730,7 +630,7 @@ class FarmStateMachine(
                     return true
                 }
                 rt.log("尚未确认进入农场，尝试重新点击入口(${i + 1})")
-                tryClickTexts("王者农场", "周末双倍", "进入农场", "去农场", "我的农场")
+                ocrClick.tryClickTexts("王者农场", "周末双倍", "进入农场", "去农场", "我的农场")
             }
             rt.log("⚠点击了农场入口但未确认进入农场页面（OCR未见农场标志词，可能需手动进入）")
             return false
@@ -742,7 +642,7 @@ class FarmStateMachine(
     private suspend fun scanForRipeCrops(): Boolean {
         // v1.4.4: 此前为 Random.nextDouble()<0.55 纯随机判定 → 改为真实OCR检测成熟标识
         val provider = rt.screenshotProvider
-        if (!isRealMode() || provider == null) {
+        if (!ocrClick.isRealMode() || provider == null) {
             rt.log("[模拟] 无截图/点击通道，随机判定成熟状态")
             delay(RandomDelay.uniform(400, 900))
             return kotlin.random.Random.nextDouble() < 0.55
@@ -757,7 +657,7 @@ class FarmStateMachine(
             // OCR 恒检测不到 → 成熟检测恒 false，导致"成熟不触发收获"。改为：
             //   ① 优先 OCR 检测成熟字样（兼容少数界面确有该词）；
             //   ② 用图像识别 findMatureCrops 检测金色成熟作物；
-            //   ③ 仍无则兜底返回 true——交给 doOneKeyFarming(一键务农) 统一处理，
+            //   ③ 仍无则兜底返回 true——交给 oneKey.doOneKeyFarming(一键务农) 统一处理，
             //      未成熟会被游戏自动跳过，不会误操作。
             val found = java.util.concurrent.atomic.AtomicBoolean(false)
             val latch = java.util.concurrent.CountDownLatch(1)
@@ -779,7 +679,7 @@ class FarmStateMachine(
                 return true
             }
             // v1.4.36: 成熟作物可能处于视觉遮挡/金色阈值边缘，图像识别漏检。
-            // 兜底返回 true——交给 doOneKeyFarming(一键务农) 统一处理，
+            // 兜底返回 true——交给 oneKey.doOneKeyFarming(一键务农) 统一处理，
             // 游戏对未成熟作物会自动跳过，不会误操作；若真无作物，一键务农也只会空跑一次。
             rt.log("🔍未检测到成熟标识，兜底交由一键务农处理")
             return true
@@ -792,14 +692,14 @@ class FarmStateMachine(
         // === 真实模式：优先点"一键浇水"（Lv4+ 解锁，一次批量完成） ===
         // v1.4.4: 点击失败如实返回0交给上层恢复链，不再静默走假计数循环冒充真实进度
         // v1.4.19: 先确认在农场才执行，杜绝在大厅误命"浇水/收获"等宣传文字假成功
-        if (isRealMode()) {
+        if (ocrClick.isRealMode()) {
             if (!confirmFarmScene()) {
                 rt.log("⚠未确认在农场页面，本次浇水不计入（避免大厅误点）")
                 return 0
             }
             // v1.4.26: 浇水/收获/种植统一走"一键务农"（需靠近雕像才显示）：点"一键务农"→设置面板勾选→确定即自动执行。
             // 此前找"一键浇水/浇水壶"文字（农场主界面并不存在，仅在一键务农面板内）与逐株OCR均不可用。
-            return doOneKeyFarming()
+            return oneKey.doOneKeyFarming()
         }
         val cfg = ConfigManager.getConfig()
         var watered = 0
@@ -827,13 +727,13 @@ class FarmStateMachine(
         // === 真实模式：优先点"一键收获"（Lv8+ 解锁） ===
         // v1.4.4: 点击失败如实返回0，不再随机编造收获株数
         // v1.4.19: 先确认在农场才执行，防止大厅误命"收获"文字假成功
-        if (isRealMode()) {
+        if (ocrClick.isRealMode()) {
             if (!confirmFarmScene()) {
                 rt.log("⚠未确认在农场页面，本次收获不计入（避免大厅误点）")
                 return 0
             }
             // v1.4.26: 收获与浇水同源，统一走"一键务农"（一次即可覆盖浇水/收获/种植）
-            return doOneKeyFarming()
+            return oneKey.doOneKeyFarming()
         }
         var harvested = 0
         val ripe = kotlin.random.Random.nextInt(0, 6)
@@ -854,353 +754,12 @@ class FarmStateMachine(
      * 因此正确路径为：靠近雕像→点齿轮→面板（一键浇水/一键收获/一键种植三项默认勾选）→点确定。
      * 未靠近雕像(找不到按钮)、面板未打开或未确认时如实返回 0，不假成功。
      */
-    private suspend fun doOneKeyFarming(): Int {
-        // 确保"一键务农"可见（需靠近雕像才显示），否则先走位逼近
-        if (!ocrContainsAny("一键务农", "键务农") && !moveTowardsStatue()) {
-            rt.log("⚠未找到[一键务农]（需靠近雕像才显示），本轮跳过")
-            return 0
-        }
-        delay(RandomDelay.uniform(700, 1300))
-        // v1.4.37: 一键种植使用当前已选种子 → 确认前先按种植配置选种（限频60s，失败不阻断）
-        ensureSeedSelected()
-        // 点击齿轮(设置)打开"一键务农设置"面板
-        if (!openOneKeySettingsPanel()) {
-            rt.log("⚠未能打开一键务农设置面板")
-            return 0
-        }
-        delay(RandomDelay.uniform(800, 1500))
-        // 面板默认勾选"一键浇水/一键收获/一键种植"，点确定即统一执行
-        if (tryClickTexts("确定", "确认")) {
-            rt.log("✓已确认一键务农：一键收获 → 一键种植 → 一键浇水")
-            delay(RandomDelay.uniform(2500, 4000))
-            return 1
-        }
-        rt.log("⚠一键务农设置面板未找到确定按钮")
-        return 0
-    }
-
-    /**
-     * 打开"一键务农设置"面板：
-     * 一键务农按钮右上方有一个齿轮(设置)图标，点击才弹出面板（点按钮本体不弹出）。
-     * 齿轮无文字，需基于一键务农文字相对偏移（实测偏移 +90,-125 @1920x1080），OCR 定位失败则兜底绝对坐标。
-     * 点击后轮询 OCR 确认标题"一键务农设置/请选择工作内容"出现。
-     */
-    private suspend fun openOneKeySettingsPanel(): Boolean {
-        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return false
-        val provider = rt.screenshotProvider ?: return false
-        val bmp = runCatching { provider() }.getOrNull() ?: return false
-        val scaleX = bmp.width / 1920f
-        val scaleY = bmp.height / 1080f
-        var gearX = (1350 * scaleX).toInt()
-        var gearY = (550 * scaleY).toInt()
-        var byOcr = false
-        try {
-            val latch = java.util.concurrent.CountDownLatch(1)
-            rt.ocr.recognizeText(bmp) { _, blocks ->
-                val t = blocks.firstOrNull {
-                    val clean = it.text.replace("\\s".toRegex(), "")
-                    clean.contains("一键务农") || clean.contains("键务农")
-                }
-                if (t != null) {
-                    gearX = t.x + (90 * scaleX).toInt()
-                    gearY = t.y - (125 * scaleY).toInt()
-                    byOcr = true
-                }
-                latch.countDown()
-            }
-            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
-        } finally {
-            bmp.recycle()
-        }
-        val cx = gearX + kotlin.random.Random.nextInt(-8, 9)
-        val cy = gearY + kotlin.random.Random.nextInt(-8, 9)
-        svc.click(cx, cy)
-        rt.log(if (byOcr) "✅OCR定位一键务农→点齿轮($cx,$cy)" else "⚠OCR未定位一键务农，兜底点齿轮($cx,$cy)")
-        // 等待面板打开，确认标题出现
-        for (i in 0 until 6) {
-            delay(RandomDelay.uniform(600, 1000))
-            if (ocrContainsAny("一键务农设置", "请选择工作内容")) {
-                rt.log("✅一键务农设置面板已打开")
-                return true
-            }
-        }
-        return false
-    }
-
-    /** OCR 全屏检测任一关键词是否存在（不点击）。用于确认面板/文字出现。 */
-    private suspend fun ocrContainsAny(vararg keywords: String): Boolean {
-        val provider = rt.screenshotProvider ?: return false
-        val bmp = runCatching { provider() }.getOrNull() ?: return false
-        try {
-            val latch = java.util.concurrent.CountDownLatch(1)
-            var hit = false
-            rt.ocr.recognizeText(bmp) { _, blocks ->
-                val full = blocks.joinToString("") { it.text.replace("\\s".toRegex(), "") }
-                hit = keywords.any { kw -> full.contains(kw) || blocks.any { it.text.replace("\\s".toRegex(), "").contains(kw) } }
-                latch.countDown()
-            }
-            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
-            return hit
-        } catch (t: Throwable) {
-            return false
-        } finally {
-            bmp.recycle()
-        }
-    }
-
-    private data class OcrHit(
-        val keyword: String,
-        val x: Int,
-        val y: Int,
-        val imageWidth: Int,
-        val imageHeight: Int
-    )
-
-    /** OCR 定位指定关键词的文本块中心坐标。找不到返回 null。 */
-    private suspend fun ocrFindPos(
-        keyword: String,
-        filter: ((OcrHelper.TextBlock, Int, Int) -> Boolean)? = null
-    ): OcrHit? = ocrFindPos(listOf(keyword), filter)
-
-    /** OCR 按关键词优先级定位第一个文本块，可按截图尺寸过滤位置。 */
-    private suspend fun ocrFindPos(
-        keywords: List<String>,
-        filter: ((OcrHelper.TextBlock, Int, Int) -> Boolean)? = null
-    ): OcrHit? {
-        val provider = rt.screenshotProvider ?: return null
-        val bmp = runCatching { provider() }.getOrNull() ?: return null
-        var hit: OcrHit? = null
-        try {
-            val latch = java.util.concurrent.CountDownLatch(1)
-            rt.ocr.recognizeText(bmp) { _, blocks ->
-                val found = keywords.firstNotNullOfOrNull { keyword ->
-                    blocks.firstOrNull {
-                        val clean = it.text.replace("\\s".toRegex(), "")
-                        (clean.contains(keyword) || ocrTextVariant(clean, keyword)) &&
-                                (filter == null || filter(it, bmp.width, bmp.height))
-                    }?.let { keyword to it }
-                }
-                if (found != null) {
-                    hit = OcrHit(
-                        keyword = found.first,
-                        x = found.second.x,
-                        y = found.second.y,
-                        imageWidth = bmp.width,
-                        imageHeight = bmp.height
-                    )
-                }
-                latch.countDown()
-            }
-            latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
-            return hit
-        } catch (t: Throwable) {
-            return null
-        } finally {
-            bmp.recycle()
-        }
-    }
-
-    /** 上次选种时间：一键务农每轮浇水/收获都会触发，限频避免反复开关种子面板。 */
-    @Volatile private var lastSeedSelectAt = 0L
-
-    /**
-     * v1.4.37: 右下角种植按钮未选种子时，按助手配置选种。
-     * 优先级：双倍期内→周末作物(金币)；双倍前卡点窗口→卡双倍(周五18点成熟)；平日→平日作物(经验)。
-     * 流程：OCR定位右下角"种植"按钮→点开种子面板→点击目标作物→确定。
-     * 一键种植使用当前已选种子，故须在"一键务农"确认前完成选种。
-     * 找不到种植按钮/目标作物时如实返回 false（一键种植沿用上次所选种子），不阻断主流程。
-     */
-    private suspend fun ensureSeedSelected(): Boolean {
-        val cfg = ConfigManager.getConfig()
-        val now = System.currentTimeMillis()
-        if (now - lastSeedSelectAt < 60_000L) return true   // 60s 内已选过，跳过（含上次失败限频）
-        lastSeedSelectAt = now
-        val (cropName, reason) = resolveTargetCrop(cfg)
-        if (cropName.isNullOrBlank()) {
-            rt.log("⚠种植选种: 无法解析目标作物（等级${cfg.farmLevel}无可种作物），沿用当前种子")
-            return false
-        }
-        rt.log("🌱种植配置[$reason] → 目标作物: $cropName")
-        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return false
-        // 右下角"种植"按钮（限定画面下半部，避免命中大厅/面板内同名干扰文字）
-        val plantPos = ocrFindPos("种植") { block, _, height -> block.y > height / 2 } ?: run {
-            rt.log("⚠未找到右下角[种植]按钮（可能无空地/不在此页面），本次不选种")
-            return false
-        }
-        svc.click(plantPos.x, plantPos.y)
-        rt.log("🌱已点击种植按钮(${plantPos.x},${plantPos.y})，等待种子面板")
-        delay(RandomDelay.uniform(1200, 2000))
-        // 面板内点击目标作物种子（排除右下角按钮自身）
-        var picked = false
-        for (i in 0 until 3) {
-            val exclusionRadius = (120 * plantPos.imageWidth / 1920f).toInt().coerceAtLeast(60)
-            val seedPos = ocrFindPos(cropName) { block, _, height ->
-                !(block.y > height / 2 && kotlin.math.abs(block.x - plantPos.x) < exclusionRadius)
-            }
-            if (seedPos != null) {
-                svc.click(seedPos.x, seedPos.y)
-                rt.log("✓已选择种子[$cropName](${seedPos.x},${seedPos.y})")
-                picked = true
-                break
-            }
-            delay(RandomDelay.uniform(700, 1200))
-        }
-        if (!picked) {
-            rt.log("⚠种子面板未找到[$cropName]（可能等级未解锁或面板布局差异），本次不选种")
-            return false
-        }
-        delay(RandomDelay.uniform(600, 1100))
-        // 面板确认按钮（如有）；无则面板随后续操作自动应用已选种子
-        if (tryClickTexts("确定", "确认")) {
-            rt.log("✓已确认选种")
-        }
-        return true
-    }
-
-    /**
-     * v1.4.37: 按种植配置解析目标作物。
-     *  - 周末双倍期(周五18点~周日)：用户配置周末作物，缺省自动推荐金币最高作物；
-     *  - 卡双倍窗口(开启周末双倍策略且距下次双倍≤32小时)：选生长时长最接近剩余时间的作物，
-     *    令其恰在周五18:00双倍开启时成熟，收获即吃产量x2；
-     *  - 平日(周一~周四)：用户配置平日作物，缺省自动推荐经验最高作物。
-     * @return 作物名 to 原因说明（作物名为 null 表示无可用作物）
-     */
-    private fun resolveTargetCrop(cfg: com.farmbot.config.FarmConfig): Pair<String?, String> {
-        val now = java.util.Calendar.getInstance()
-        if (GameRules.isWeekendDouble(now)) {
-            val configured = availableConfiguredCrop(cfg.weekendCrop, cfg.farmLevel)
-            val name = configured
-                ?: CropDatabase.recommend(cfg.farmLevel, CropDatabase.Strategy.COIN_FIRST)?.name
-            return name to if (configured != null) "周末双倍期: 自定义作物" else "周末双倍期: 金币作物"
-        }
-        if (cfg.weekendDoubleAware) {
-            val hoursUntil = GameRules.minutesUntilNextDouble(now) / 60.0
-            if (hoursUntil > 0.5 && hoursUntil <= 32.0) {
-                val pick = CropDatabase.closestToGrowHours(cfg.farmLevel, hoursUntil)
-                if (pick != null) {
-                    return pick.name to "卡双倍: 距周五${GameRules.DOUBLE_START_HOUR}点约${hoursUntil.toInt()}h → ${pick.name}(${pick.growHours}h成熟)"
-                }
-            }
-        }
-        val configured = availableConfiguredCrop(cfg.weekdayCrop, cfg.farmLevel)
-        val name = configured
-            ?: CropDatabase.recommend(cfg.farmLevel, CropDatabase.Strategy.EXP_FIRST)?.name
-        return name to if (configured != null) "平日: 自定义作物" else "平日: 经验作物"
-    }
-
-    private fun availableConfiguredCrop(name: String, farmLevel: Int): String? {
-        val normalized = name.trim().takeIf { it.isNotEmpty() } ?: return null
-        return CropDatabase.find(normalized)
-            ?.takeIf { it.unlockLevel <= farmLevel }
-            ?.name
-    }
-
-    /**
-     * v1.4.37: 走到目标地块——朝 OCR 目标文字推摇杆让角色靠近。
-     * 开垦/祝福/偷菜/单块操作均需走到对应地块才可操作：相机跟随角色，
-     * 目标文字相对画面中心的偏移即角色需要移动的方向；每步推进后复查，
-     * 文字靠近画面中心（角色已贴近）或从画面消失（走到身前/被遮挡）即视为到达。
-     * @return true=已接近/到达目标；false=目标未找到或步数用尽（如实返回，不假成功）
-     */
-    private suspend fun walkNearText(
-        keywords: List<String>,
-        maxSteps: Int = 6,
-        nearRadius: Int = 200
-    ): Boolean {
-        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return false
-        if (rt.screenshotProvider == null) return false
-        val label = keywords.joinToString("/")
-        for (step in 0 until maxSteps) {
-            if (!rt.isRunning.value || !rt.scope.isActive) return false
-            val pos = ocrFindPos(keywords)
-            if (pos == null) {
-                // 目标文字消失：可能已贴近身前或视角遮挡，视为到达，交给后续点击校验
-                if (step > 0) {
-                    rt.log("🚶走位到[$label]: 目标已离开画面，交由后续点击确认")
-                    return true
-                }
-                rt.log("🚶走位到[$label]: 当前画面未找到目标")
-                return false
-            }
-            val scaleX = pos.imageWidth / 1920f
-            val scaleY = pos.imageHeight / 1080f
-            val moveScale = minOf(scaleX, scaleY)
-            val joyX = (300 * scaleX).toInt()
-            val joyY = (820 * scaleY).toInt()
-            val cx = pos.imageWidth / 2
-            val cy = pos.imageHeight / 2
-            val dx = pos.x - cx
-            val dy = pos.y - cy
-            val distance = kotlin.math.hypot(dx.toDouble(), dy.toDouble())
-            if (distance <= nearRadius * moveScale) {
-                rt.log("🚶走位到[${pos.keyword}]: 目标已在角色附近，无需移动")
-                return true
-            }
-            // 摇杆推动方向与目标偏移同向，幅度按距离缩放(限幅避免推过头)
-            val pushDistance = 260.0 * moveScale
-            val scale = pushDistance / distance
-            val maxPush = (280 * moveScale).toInt().coerceAtLeast(120)
-            val pushX = (dx * scale).toInt().coerceIn(-maxPush, maxPush)
-            val pushY = (dy * scale).toInt().coerceIn(-maxPush, maxPush)
-            if (!svc.swipe(joyX, joyY, joyX + pushX, joyY + pushY, 900)) {
-                rt.log("🚶走位到[${pos.keyword}]失败：滑动手势未被系统接受")
-                return false
-            }
-            rt.log("🚶走位到[${pos.keyword}] 第${step + 1}步: 目标(${pos.x},${pos.y}) 推杆($pushX,$pushY)")
-            delay(RandomDelay.uniform(900, 1400))
-        }
-        rt.log("🚶走位到[$label]: 步数用尽，未确认接近目标")
-        return false
-    }
-
-    /**
-     * v1.4.35: 模拟"移动方向键"（虚拟摇杆）把角色推向雕像。
-     * 实测（模拟器 1920x1080）：角色出生在画面下方中央圆台，雕像位于**正上方**（告示牌建筑方向）——
-     * 靠近后右侧出现"一键务农/流光加速/农场升级"。此前 v1.4.30/31 按"雕像在左下方"向下/左下推摇杆，
-     * 使角色被推离雕像、永远无法靠近（"一键务农"永不出现）。改为**向上**（为主）/左上/右上多方向推进，
-     * 每步用 OCR 复查"一键务农"，出现即停。
-     */
-    private suspend fun moveTowardsStatue(): Boolean {
-        val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return false
-        val provider = rt.screenshotProvider ?: return false
-        val bmp = runCatching { provider() }.getOrNull() ?: return false
-        val scaleX = bmp.width / 1920f
-        val scaleY = bmp.height / 1080f
-        bmp.recycle()
-        val joyX = (300 * scaleX).toInt()
-        val joyY = (820 * scaleY).toInt()
-        // 向上（雕像在角色上方）为主，辅以左上/右上微调；每次幅度适中，避免推过头
-        val steps = listOf(
-            0 to 0,       // 占位，直接先查一次
-            0 to (-280 * scaleY).toInt(),
-            (-160 * scaleX).toInt() to (-220 * scaleY).toInt(),
-            (160 * scaleX).toInt() to (-220 * scaleY).toInt(),
-            0 to (-200 * scaleY).toInt(),
-            (-110 * scaleX).toInt() to (-160 * scaleY).toInt(),
-            (110 * scaleX).toInt() to (-160 * scaleY).toInt()
-        )
-        for (i in steps.indices) {
-            if (!rt.isRunning.value || !rt.scope.isActive) return false
-            if (i > 0) {
-                val (dx, dy) = steps[i]
-                svc.swipe(joyX, joyY, joyX + dx, joyY + dy, 1100)
-                delay(RandomDelay.uniform(900, 1500))
-            }
-            if (ocrContainsAny("一键务农", "键务农")) {
-                rt.log("✅朝雕像移动成功(第${i}步)，[一键务农]已出现")
-                return true
-            }
-            rt.log("朝雕像移动(第${i}步)，仍未出现[一键务农]")
-        }
-        return false
-    }
-
     private suspend fun sellOrStoreInternal() {
         val cfg = ConfigManager.getConfig()
         // === 真实模式：优先点击出售入口 ===
         // v1.4.4: 点击失败明确提示，不再无声跳过
-        if (isRealMode()) {
-            if (!tryClickTexts("一键出售", "全部出售", "出售")) {
+        if (ocrClick.isRealMode()) {
+            if (!ocrClick.tryClickTexts("一键出售", "全部出售", "出售")) {
                 rt.log("⚠真实模式: 未找到出售入口，跳过真实出售动作")
             }
         }
@@ -1262,7 +821,7 @@ class FarmStateMachine(
         val stealFirst = cfg.stealBeforeBless
         // v1.4.7: 有截图+点击通道时走真实 OCR 导航（社交→好友列表→逐个拜访）；
         // 演示路径不再写入每日计数（此前模拟会虚假消耗真实配额）
-        if (isRealMode() && rt.screenshotProvider != null) {
+        if (ocrClick.isRealMode() && rt.screenshotProvider != null) {
             val visited = visitFriendsViaOcr(canStealNow, canBlessNow, stealRemain, blessRemain)
             rt.log("好友拜访完成: 顺序[${if (stealFirst) "先偷后祝" else "先祝后偷"}] 真实处理 $visited 位好友农场")
             return
@@ -1304,7 +863,7 @@ class FarmStateMachine(
         // v1.4.13: 好友入口关键词以「社交」按钮优先（农场页右下角为权威入口）。
         // 原顺序"好友列表/好友/社交"会让 OCR 优先命中页面上的"好友列表"标题等非按钮文本
         // （.contains 子串匹配按顺序取首个命中），导致点到标题中心而实际无效、流程空转。
-        if (!tryClickTexts("社交", "好友列表", "好友农场", "好友")) {
+        if (!ocrClick.tryClickTexts("社交", "好友列表", "好友农场", "好友")) {
             rt.log("⚠真实模式: 未找到好友入口，跳过本轮偷菜/祝福（不计入每日次数）")
             return 0
         }
@@ -1318,7 +877,7 @@ class FarmStateMachine(
                 rt.log("今日偷菜/祝福配额已用完，停止拜访")
                 break
             }
-            if (!tryClickTexts("拜访", "进入好友农场", "去TA的农场", "TA的农场", "进入农场")) {
+            if (!ocrClick.tryClickTexts("拜访", "进入好友农场", "去TA的农场", "TA的农场", "进入农场")) {
                 rt.log("⚠真实模式: 好友列表无更多拜访入口，共进入 $visited 位")
                 break
             }
@@ -1326,23 +885,23 @@ class FarmStateMachine(
             var acted = false
             // v1.4.12: 偷菜按钮实际文案为"拿取"（靠近发光成熟作物点击拿取），补入关键词
             // v1.4.37: 偷菜/祝福需走到对应地块才可操作——先朝目标走位再点击（目标不在画面则跳过走位）
-            if (canSteal && stealLeft > 0 && ocrContainsAny("拿取", "可偷")) {
-                walkNearText(listOf("拿取", "可偷"), maxSteps = 4)
+            if (canSteal && stealLeft > 0 && ocrClick.ocrContainsAny("拿取", "可偷")) {
+                movement.walkNearText(listOf("拿取", "可偷"), maxSteps = 4)
             }
-            if (canSteal && stealLeft > 0 && tryClickTexts("拿取", "可偷", "偷菜", "摘取")) {
+            if (canSteal && stealLeft > 0 && ocrClick.tryClickTexts("拿取", "可偷", "偷菜", "摘取")) {
                 DailyCounters.addSteal(); stealLeft--; acted = true
                 rt.log("✓真实偷菜完成(今日剩余$stealLeft)")
             }
-            if (canBless && blessLeft > 0 && ocrContainsAny("祝福", "祈福")) {
-                walkNearText(listOf("祝福", "祈福"), maxSteps = 4)
+            if (canBless && blessLeft > 0 && ocrClick.ocrContainsAny("祝福", "祈福")) {
+                movement.walkNearText(listOf("祝福", "祈福"), maxSteps = 4)
             }
-            if (canBless && blessLeft > 0 && tryClickTexts("祝福", "祈福")) {
+            if (canBless && blessLeft > 0 && ocrClick.tryClickTexts("祝福", "祈福")) {
                 DailyCounters.addBless(); blessLeft--; acted = true
                 rt.log("✓真实祝福完成(今日剩余$blessLeft)")
             }
             visited++
             if (!acted) rt.log("⚠真实模式: 第${visited}位好友农场未找到偷菜/祝福入口")
-            if (!tryClickTexts("返回", "好友列表")) {
+            if (!ocrClick.tryClickTexts("返回", "好友列表")) {
                 rt.log("⚠真实模式: 无法返回好友列表，终止本轮拜访")
                 break
             }
@@ -1351,7 +910,7 @@ class FarmStateMachine(
         // 尽力回到自己农场，失败交由后续导航状态兜底。
         // v1.4.23: 末尾不再用裸词"农场"——它会被大厅聊天面板的"农场"标签/任意"农场"字样命中，
         // 导致误点进大厅聊天页（实测日志 "OCR定位[农场](275,49)"）。仅保留精确词。
-        tryClickTexts("返回农场", "我的农场", "离开好友农场")
+        ocrClick.tryClickTexts("返回农场", "我的农场", "离开好友农场")
         return visited
     }
 
@@ -1366,9 +925,9 @@ class FarmStateMachine(
         }
         // v1.4.4: 真实模式点击对战入口后即标记完成并告知用户手动收尾；
         // 不再挂机 delay(surrenderAfterSec) 假装打完整局（对局自动化涉及复杂游戏AI，超出范围）
-        if (isRealMode()) {
+        if (ocrClick.isRealMode()) {
             rt.log("🎮真实模式: 尝试打开对战入口（投降秒数=${cfg.surrenderAfterSec}s）")
-            val clicked = tryClickTexts("对战模式", "对战", "开始匹配")
+            val clicked = ocrClick.tryClickTexts("对战模式", "对战", "开始匹配")
             if (clicked) {
                 rt.log("✓已点击对战入口。请在约${cfg.surrenderAfterSec}s后手动投降领奖（自动打对局暂未接入），今日对战已标记完成")
                 taskScheduler.markDailyBattleDone()
@@ -1401,7 +960,7 @@ class FarmStateMachine(
         }
         delay(RandomDelay.uniform(600, 1400))
         // v1.4.7: 有通道时尝试真实开地/升级入口点击，不再无条件 [模拟]
-        if (!isRealMode() || rt.screenshotProvider == null) {
+        if (!ocrClick.isRealMode() || rt.screenshotProvider == null) {
             rt.log("[模拟] 升级/开地演示（无截图/点击通道）")
             delay(1000)
             return
@@ -1430,12 +989,12 @@ class FarmStateMachine(
         // v1.4.37: 开垦需走到对应地块才可操作——先走位接近"可开垦"地块再点击，
         // 否则远距离点击无效（相机跟随角色，入口文字可能位于角色远处）。
         val expandKw = arrayOf("开垦", "可开垦", "开地", "购买土地", "解锁土地", "扩建", "扩充土地")
-        if (ocrContainsAny(*expandKw)) {
-            walkNearText(expandKw.toList(), maxSteps = 5)
+        if (ocrClick.ocrContainsAny(*expandKw)) {
+            movement.walkNearText(expandKw.toList(), maxSteps = 5)
         }
-        if (tryClickTexts(*expandKw)) {
+        if (ocrClick.tryClickTexts(*expandKw)) {
             delay(RandomDelay.uniform(1000, 2000))
-            if (tryClickTexts("确定", "确认", "购买")) {
+            if (ocrClick.tryClickTexts("确定", "确认", "购买")) {
                 rt.log("✓已执行开地/升级确认")
             } else {
                 rt.log("✓已点击开地/升级入口（未见确认弹窗，可能已直接生效）")
