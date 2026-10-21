@@ -22,6 +22,9 @@ class WateringWorker(
         const val TAG = "WateringWorker"
     }
 
+/**
+ * 兜底浇水任务：定时触发一次浇水
+ */
     override suspend fun doWork(): Result {
         return try {
             Logger.i(TAG, "WorkManager 触发浇水任务 start")

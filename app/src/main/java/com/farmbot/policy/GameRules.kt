@@ -15,10 +15,16 @@ import java.util.Calendar
  */
 object GameRules {
 
+/**
+ * 农场等级上限
+ */
     const val FARM_MAX_LEVEL = 100
 
     // ===== 周末双倍 =====
     const val DOUBLE_START_DAY = Calendar.FRIDAY
+/**
+ * 双倍时段开始小时（18 点）
+ */
     const val DOUBLE_START_HOUR = 18
 
     /** 当前是否处于周末双倍收益期（周五18:00 ~ 周日24:00） */
@@ -50,6 +56,9 @@ object GameRules {
 
     // ===== 昼夜系统（S45：只影响变异概率） =====
     const val DAY_START_HOUR = 6
+/**
+ * 夜间时段开始小时
+ */
     const val NIGHT_START_HOUR = 18
 
     /** 当前是否处于夜晚（18:00 ~ 次日6:00） */
@@ -109,6 +118,9 @@ object GameRules {
     // ===== 农场等级解锁表（S45） =====
     data class LevelUnlock(val level: Int, val feature: String)
 
+/**
+ * 等级解锁表：等级 -> 解锁的作物 / 功能
+ */
     val LEVEL_UNLOCKS = listOf(
         LevelUnlock(4, "一键浇水 + 第4块土地"),
         LevelUnlock(5, "农场小摊开放"),
@@ -149,6 +161,9 @@ object GameRules {
 
     // ===== 变异果实培育台（S45） =====
     const val BREEDING_UNLOCK_LEVEL = 40
+/**
+ * 变异果实培育台名称
+ */
     const val BREEDING_NAME = "变异果实培育台"
     const val MAX_MUTATION_STACK = 4          // 最高4词条
     const val MAX_COMBINED_MULTIPLIER = 840   // 四词条合计最高840倍

@@ -23,6 +23,9 @@ object Logger {
     private val df = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
     private val dayFmt = SimpleDateFormat("yyyyMMdd", Locale.US)
 
+/**
+ * 初始化日志：确定落盘目录
+ */
     fun init(context: Context) {
         appContext = context.applicationContext
         val dir = File(context.getExternalFilesDir(null), "FarmBot/logs")
@@ -44,21 +47,48 @@ object Logger {
         }
     }
 
+/**
+ * 写 DEBUG 级日志
+ */
     fun d(tag: String, msg: String) = log(Level.DEBUG, tag, msg)
+/**
+ * 写 INFO 级日志
+ */
     fun i(tag: String, msg: String) = log(Level.INFO, tag, msg)
+/**
+ * 写 WARN 级日志
+ */
     fun w(tag: String, msg: String) = log(Level.WARN, tag, msg)
+/**
+ * 写 ERROR 级日志（可带异常）
+ */
     fun e(tag: String, msg: String, t: Throwable? = null) = log(Level.ERROR, tag, msg, t)
 
+/**
+ * 最近若干条日志条目
+ */
     fun getRecentLogs(count: Int = 50): List<LogEntry> = buffer.toList().takeLast(count)
 
+/**
+ * 最近若干条日志文本
+ */
     fun getRecentStrings(count: Int = 50): List<String> = getRecentLogs(count).map {
         "${df.format(Date(it.timestamp))} [${it.level.name[0]}] ${it.tag}: ${it.message}"
     }
 
+/**
+ * 全部日志条目
+ */
     fun getAllLogs(): List<LogEntry> = buffer.toList()
 
+/**
+ * 清空内存日志缓冲
+ */
     fun clearLogs() = buffer.clear()
 
+/**
+ * 导出日志文件路径（未启用落盘时为 null）
+ */
     fun exportLogs(): File? = logFile
 
     enum class Level { DEBUG, INFO, WARN, ERROR }

@@ -31,6 +31,8 @@ internal class BattleUpgradeHandler(private val ctx: FarmStateContext, private v
 
     private suspend fun <T> withErrorLog(op: String, block: suspend () -> T?): T? = ctx.withErrorLog(op, block)
 
+/**
+ * 每日对战入口：完成后转入升级决策 */
     internal suspend fun dailyBattle() {
         rt.log("检查每日对战...")
         if (taskScheduler.isDailyBattleDone()) rt.log("今日对战已完成，跳过")
@@ -39,6 +41,8 @@ internal class BattleUpgradeHandler(private val ctx: FarmStateContext, private v
     }
 
 
+/**
+ * 升级决策入口：完成后回到空闲 */
     internal suspend fun upgradeDecision() {
         rt.log("执行升级决策...")
         doUpgradeDecision()
@@ -52,9 +56,13 @@ internal class BattleUpgradeHandler(private val ctx: FarmStateContext, private v
 
     internal suspend fun doDailyBattle() = withErrorLog("每日对战") { dailyBattleInternal() }
 
+/**
+ * 升级决策的异常包裹层：出错只记日志，不触发恢复 */
     internal suspend fun doUpgradeDecision() = withErrorLog("升级决策") { upgradeDecisionInternal() }
 
 
+/**
+ * 对战实现：匹配对战并领取奖励，双倍期优先完成 */
     internal suspend fun dailyBattleInternal() {
         val cfg = ConfigManager.getConfig()
         if (!cfg.dailyBattle) { rt.log("配置关闭对战，跳过"); return }
@@ -89,6 +97,8 @@ internal class BattleUpgradeHandler(private val ctx: FarmStateContext, private v
     }
 
 
+/**
+ * 升级实现：按等级解锁表给出开垦 / 升级建议，配置允许时主动开垦 */
     internal suspend fun upgradeDecisionInternal() {
         val cfg = ConfigManager.getConfig()
         rt.log("优先级: ${cfg.upgradePriority.name}, 开地: ${cfg.expandAlways || cfg.upgradeExpandAfter}, 完美模式: ${cfg.perfectMode}")

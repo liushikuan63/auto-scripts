@@ -50,10 +50,16 @@ object ForegroundAppDetector {
 
     /** 当前稳定前台包名（排除了输入法/SystemUI/权限弹窗等干扰） */
     private val _stableForegroundPkg = MutableStateFlow<String?>(null)
+/**
+ * 稳定的前台包名（经过短暂窗口去抖）
+ */
     val stableForegroundPkg: StateFlow<String?> = _stableForegroundPkg.asStateFlow()
 
     /** 目标游戏是否在前台 */
     private val _isTargetGameForeground = MutableStateFlow(false)
+/**
+ * 目标游戏是否在前台
+ */
     val isTargetGameForeground: StateFlow<Boolean> = _isTargetGameForeground.asStateFlow()
 
     /** 可被用户自定义的目标包名集合（默认包含王者农场） */
@@ -111,6 +117,9 @@ object ForegroundAppDetector {
         updateTargetGameFlag()
     }
 
+/**
+ * 设置需要监视的目标包名集合
+ */
     fun setTargetPackages(pkgs: Collection<String>) {
         targetPackages.clear()
         targetPackages.addAll(pkgs)
@@ -255,6 +264,9 @@ object ForegroundAppDetector {
         }
     }
 
+/**
+ * 是否已获得使用情况访问权限（无障碍拿不到前台时的兜底）
+ */
     fun hasUsageStatsPermission(context: Context): Boolean {
         return runCatching {
             val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -274,6 +286,9 @@ object ForegroundAppDetector {
         }.getOrDefault(false)
     }
 
+/**
+ * 引导用户去系统设置授予使用情况访问权限
+ */
     fun requestUsageStatsPermission(context: Context) {
         runCatching {
             val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)

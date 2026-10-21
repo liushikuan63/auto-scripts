@@ -27,6 +27,9 @@ object BatteryOptimizationHelper {
 
     /** 是否已加入"忽略电池优化"白名单 */
     @SuppressLint("ServiceCast")
+/**
+ * 是否已忽略电池优化：被限制时定时任务会被推迟
+ */
     fun isIgnoringBatteryOptimizations(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
         val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return false

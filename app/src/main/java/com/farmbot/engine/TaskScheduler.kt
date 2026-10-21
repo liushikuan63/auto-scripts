@@ -47,12 +47,18 @@ class TaskScheduler(private val context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private val _nextWateringAt = MutableStateFlow(0L)
+/**
+ * 下一次浇水的计划时间戳（毫秒），供界面显示 */
     val nextWateringAt: StateFlow<Long> = _nextWateringAt.asStateFlow()
 
     private val _isDailyBattleDone = MutableStateFlow(false)
+/**
+ * 今日对战是否已完成 */
     val isDailyBattleDone: StateFlow<Boolean> = _isDailyBattleDone.asStateFlow()
     private var dailyBattleJob: Job? = null
 
+/**
+ * 启动调度：开始按间隔安排浇水闹钟 */
     fun start() {
         // 只在引擎运行时启用后台兜底，暂停/停止后再次启动会重新建立调度。
         runCatching {
@@ -62,9 +68,13 @@ class TaskScheduler(private val context: Context) {
         scheduleDailyBattleCheck()
     }
 
+/**
+ * 当前浇水间隔（分钟） */
     fun getWaterInterval(): Int =
         prefs.getInt(KEY_WATER_INTERVAL, DEFAULT_WATER_INTERVAL)
 
+/**
+ * 设置浇水间隔（分钟），并重新安排下一次闹钟 */
     fun setWaterInterval(minutes: Int) {
         prefs.edit().putInt(KEY_WATER_INTERVAL, minutes).apply()
         // 同步更新 WorkManager 周期（作为兜底；实际时间点仍由 Alarm 控制）
@@ -73,6 +83,8 @@ class TaskScheduler(private val context: Context) {
         }
     }
 
+/**
+ * 按当前间隔安排下一次浇水闹钟 */
     fun scheduleNextWatering() {
         val intervalMin = getWaterInterval()
         val triggerAt = System.currentTimeMillis() + intervalMin * 60 * 1000L
@@ -110,6 +122,8 @@ class TaskScheduler(private val context: Context) {
         }
     }
 
+/**
+ * 立即安排一次浇水（最近时刻），用于手动触发 */
     fun scheduleImmediateWatering() {
         val triggerAt = System.currentTimeMillis() + 500L
         val intent = wateringIntent()
@@ -121,6 +135,8 @@ class TaskScheduler(private val context: Context) {
         Log.i(TAG, "已设置立即浇水闹钟")
     }
 
+/**
+ * 取消全部闹钟：停止时调用，避免残留触发 */
     fun cancelAllAlarms() {
         val intent = wateringIntent()
         val pi = PendingIntent.getBroadcast(
@@ -135,6 +151,8 @@ class TaskScheduler(private val context: Context) {
         Log.i(TAG, "已取消所有闹钟与 WorkManager 任务")
     }
 
+/**
+ * 标记今日对战已完成 */
     fun markDailyBattleDone() {
         val today = LocalDate.now().toString()
         prefs.edit().putString(KEY_LAST_BATTLE_DATE, today).apply()
@@ -142,6 +160,8 @@ class TaskScheduler(private val context: Context) {
         Log.i(TAG, "每日对战已标记完成: $today")
     }
 
+/**
+ * 查询今日对战是否已完成 */
     fun isDailyBattleDone(): Boolean {
         val lastDate = prefs.getString(KEY_LAST_BATTLE_DATE, "") ?: ""
         val today = LocalDate.now().toString()
@@ -150,6 +170,8 @@ class TaskScheduler(private val context: Context) {
         return done
     }
 
+/**
+ * 安排每日对战检查 */
     fun scheduleDailyBattleCheck() {
         if (dailyBattleJob?.isActive == true) return
         dailyBattleJob = scope.launch {
@@ -171,11 +193,15 @@ class TaskScheduler(private val context: Context) {
             action = WateringAlarmReceiver.ACTION_WATERING_ALARM
         }
 
+/**
+ * 释放调度器资源 */
     fun destroy() {
         cancelAllAlarms()
         scope.cancel()
     }
 
+/**
+ * 下一次浇水的可读时间文案 */
     fun getNextWateringTimeDisplay(): String {
         val ts = _nextWateringAt.value
         if (ts <= 0) return "未设置"

@@ -38,6 +38,9 @@ class TemplateCollectActivity : ComponentActivity() {
     private lateinit var collector: TemplateCollector
     private val REQ_IMPORT = 1001
 
+/**
+ * 模板采集页创建：展示采集步骤与预览
+ */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         collector = TemplateCollector(this)
@@ -167,6 +170,9 @@ class TemplateCollectActivity : ComponentActivity() {
     }
 
     @Deprecated("Deprecated in Java")
+/**
+ * 处理选图结果：把所选图片写入模板目录
+ */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_IMPORT && resultCode == RESULT_OK) {

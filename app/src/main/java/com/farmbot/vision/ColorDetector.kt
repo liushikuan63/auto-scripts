@@ -34,13 +34,34 @@ object ColorDetector {
         val pixelCount: Int
     )
 
+/**
+ * 红色标准色域
+ */
     val RED_RANGE = HSVRange(0, 10, 100, 255, 100, 255)
+/**
+ * 绿色标准色域
+ */
     val GREEN_RANGE = HSVRange(35, 85, 100, 255, 100, 255)
+/**
+ * 蓝色标准色域
+ */
     val BLUE_RANGE = HSVRange(100, 130, 100, 255, 100, 255)
+/**
+ * 黄色标准色域
+ */
     val YELLOW_RANGE = HSVRange(20, 35, 100, 255, 100, 255)
+/**
+ * 白色标准色域
+ */
     val WHITE_RANGE = HSVRange(0, 180, 0, 50, 200, 255)
+/**
+ * 黑色标准色域
+ */
     val BLACK_RANGE = HSVRange(0, 180, 0, 255, 0, 50)
 
+/**
+ * 判断图中主要颜色属于哪个标准色域
+ */
     fun detectColor(
         source: Mat,
         range: HSVRange,
@@ -73,6 +94,9 @@ object ColorDetector {
         )
     }
 
+/**
+ * 判断按钮是否处于激活（高亮）状态
+ */
     fun isButtonActive(
         source: Mat,
         activeRange: HSVRange = GREEN_RANGE,
@@ -85,6 +109,9 @@ object ColorDetector {
         return activeResult.matchRatio > inactiveResult.matchRatio
     }
 
+/**
+ * 取图像主色（HSV）
+ */
     fun getDominantColor(source: Mat): IntArray {
         if (source.empty()) return intArrayOf(0, 0, 0)
 
@@ -105,6 +132,9 @@ object ColorDetector {
         return intArrayOf(dominantHue, 0, 0)
     }
 
+/**
+ * 按参数构造自定义色域
+ */
     fun createCustomRange(
         centerHue: Int,
         hueTolerance: Int = 10,
@@ -118,6 +148,9 @@ object ColorDetector {
         return HSVRange(hueMin, hueMax, minSaturation, maxSaturation, minValue, maxValue)
     }
 
+/**
+ * 取出指定区域的颜色统计
+ */
     fun extractColorRegion(
         source: Mat,
         range: HSVRange
@@ -137,6 +170,9 @@ object ColorDetector {
         return mask
     }
 
+/**
+ * 分析区域颜色构成
+ */
     fun analyzeRegion(
         source: Mat,
         x: Int,

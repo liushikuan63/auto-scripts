@@ -97,6 +97,9 @@ class MainActivity : ComponentActivity() {
     /** 记录用户点击"开始"后是否在等待录屏授权落地（授权成功后自动启动引擎） */
     private var pendingAutoStart = false
 
+/**
+ * 主界面创建：Compose 承载引擎状态与控制
+ */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -137,6 +140,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+/**
+ * 主界面销毁：解除订阅
+ */
     override fun onDestroy() {
         super.onDestroy()
         Log.i(TAG, "onDestroy: Activity 销毁，但前台服务与悬浮窗保持运行")

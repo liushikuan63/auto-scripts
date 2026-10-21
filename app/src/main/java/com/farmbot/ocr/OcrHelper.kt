@@ -44,6 +44,9 @@ class OcrHelper {
             }
     }
 
+/**
+ * 识别整图文字（可限定区域）：逐块回调文字与边界框
+ */
     fun recognizeText(
         bm: Bitmap,
         region: android.graphics.Rect?,
@@ -146,6 +149,9 @@ class OcrHelper {
         recognizeText(bm) { text, _ -> cb(text.contains(target)) }
     }
 
+/**
+ * 在图中定位目标文字，命中时回调其中心坐标
+ */
     fun findTextPosition(bm: Bitmap, target: String, cb: (Int, Int) -> Unit) {
         val img = InputImage.fromBitmap(bm, 0)
         recognizer.process(img)
@@ -161,6 +167,9 @@ class OcrHelper {
             .addOnFailureListener { cb(0, 0) }
     }
 
+/**
+ * 释放底层识别器
+ */
     fun shutdown() {
         runCatching { recognizer.close() }
     }

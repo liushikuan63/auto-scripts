@@ -17,30 +17,51 @@ object LogUtil {
     private val logs = mutableListOf<String>()
     private val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.CHINA)
 
+/**
+ * 写 DEBUG 级日志（内存缓冲 + Logcat）
+ */
     fun d(msg: String) {
         Log.d(TAG, msg)
         append("[DEBUG] $msg")
     }
 
+/**
+ * 写 INFO 级日志
+ */
     fun i(msg: String) {
         Log.i(TAG, msg)
         append("[INFO] $msg")
     }
 
+/**
+ * 写 WARN 级日志
+ */
     fun w(msg: String) {
         Log.w(TAG, msg)
         append("[WARN] $msg")
     }
 
+/**
+ * 写 ERROR 级日志（可带异常）
+ */
     fun e(msg: String, t: Throwable? = null) {
         Log.e(TAG, msg, t)
         append("[ERROR] $msg${t?.message?.let { ": $it" } ?: ""}")
     }
 
+/**
+ * 最近若干条日志文本
+ */
     fun getRecentLogs(n: Int = 50): List<String> = logs.takeLast(n)
 
+/**
+ * 全部日志文本
+ */
     fun getAllLogs(): List<String> = logs.toList()
 
+/**
+ * 清空日志缓冲
+ */
     fun clearLogs() {
         logs.clear()
     }

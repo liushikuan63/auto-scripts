@@ -9,12 +9,30 @@ package com.farmbot.policy
  *  - heroName 为该作物可变异出的英雄主题果实（不可被偷，售价×10~50）
  */
 data class CropInfo(
+/**
+ * 作物名称
+ */
     val name: String,
+/**
+ * 解锁所需农场等级
+ */
     val unlockLevel: Int,
     val growHours: Double,     // 自然成熟时长（浇水后约缩短25%）
+/**
+ * 每小时经验收益
+ */
     val expPerHour: Int,
+/**
+ * 每小时金币收益
+ */
     val coinPerHour: Int,
+/**
+ * 是否以金币收益为主（双倍期优先）
+ */
     val isCoinFocus: Boolean = false,
+/**
+ * 对应英雄名（用于识别作物形象）
+ */
     val heroName: String? = null
 )
 

@@ -26,6 +26,9 @@ import com.farmbot.ui.theme.FarmTheme
  */
 class SettingsActivity : ComponentActivity() {
 
+/**
+ * 设置页创建：挂载设置内容
+ */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

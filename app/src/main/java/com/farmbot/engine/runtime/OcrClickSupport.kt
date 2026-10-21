@@ -11,10 +11,21 @@ import kotlinx.coroutines.delay
  * 便于调用方换算点击位置与做分辨率相关的判断。
  */
 internal data class OcrHit(
+/**
+ * 命中的关键词 */
     val keyword: String,
+/**
+ * 命中位置中心横坐标（屏幕像素） */
     val x: Int,
+/**
+ * 命中位置中心纵坐标（屏幕像素） */
     val y: Int,
+/**
+ * 截图宽度（像素） */
     val imageWidth: Int,
+/**
+ * 截图高度（像素）
+ */
     val imageHeight: Int
 )
 

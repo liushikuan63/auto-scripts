@@ -61,6 +61,9 @@ class ImageRecognizer private constructor() {
         val originalHeight: Int
     )
 
+/**
+ * 注册模板 Mat
+ */
     fun loadTemplate(id: String, templateMat: Mat): Boolean {
         return try {
             templateInfoCache[id] = TemplateInfo(templateMat.cols(), templateMat.rows())
@@ -73,6 +76,9 @@ class ImageRecognizer private constructor() {
         }
     }
 
+/**
+ * 从 assets 加载模板
+ */
     fun loadTemplateFromAssets(id: String, assetPath: String): Boolean {
         return try {
             val stream = android.content.res.Resources.getSystem().assets.open(assetPath)
@@ -90,6 +96,9 @@ class ImageRecognizer private constructor() {
         }
     }
 
+/**
+ * 从文件加载模板
+ */
     fun loadTemplateFromFile(id: String, filePath: String): Boolean {
         return try {
             val mat = Imgcodecs.imread(filePath, Imgcodecs.IMREAD_COLOR)
@@ -104,6 +113,9 @@ class ImageRecognizer private constructor() {
         }
     }
 
+/**
+ * 从字节流加载模板
+ */
     fun loadTemplateFromBytes(id: String, bytes: ByteArray): Boolean {
         return try {
             val mat = Imgcodecs.imdecode(MatOfByte(bytes), Imgcodecs.IMREAD_COLOR)
@@ -118,17 +130,26 @@ class ImageRecognizer private constructor() {
         }
     }
 
+/**
+ * 释放单个模板
+ */
     fun releaseTemplate(id: String) {
         templateCache.remove(id)?.release()
         templateInfoCache.remove(id)
     }
 
+/**
+ * 释放全部模板
+ */
     fun releaseAll() {
         templateCache.values.forEach { it.release() }
         templateCache.clear()
         templateInfoCache.clear()
     }
 
+/**
+ * 查找首个命中位置
+ */
     fun findFirst(
         source: Mat,
         templateId: String,
@@ -146,6 +167,9 @@ class ImageRecognizer private constructor() {
         return matches.firstOrNull()
     }
 
+/**
+ * 查找全部命中位置
+ */
     fun findAll(
         source: Mat,
         templateId: String,

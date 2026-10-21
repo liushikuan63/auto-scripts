@@ -47,6 +47,9 @@ object WorkScheduler {
             .cancelUniqueWork(UNIQUE_NAME)
     }
 
+/**
+ * 兜底任务是否已排期
+ */
     fun isScheduled(context: Context): Boolean {
         val infos = WorkManager.getInstance(context.applicationContext)
             .getWorkInfosForUniqueWork(UNIQUE_NAME).get() ?: return false

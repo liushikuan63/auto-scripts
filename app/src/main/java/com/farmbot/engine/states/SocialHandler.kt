@@ -31,6 +31,8 @@ internal class SocialHandler(private val ctx: FarmStateContext) {
 
     private suspend fun <T> withErrorLog(op: String, block: suspend () -> T?): T? = ctx.withErrorLog(op, block)
 
+/**
+ * 拜访好友入口：完成后转入每日对战 */
     internal suspend fun visitFriends() {
         rt.log("拜访好友农场...")
         doVisitFriends()
@@ -38,8 +40,12 @@ internal class SocialHandler(private val ctx: FarmStateContext) {
     }
 
 
+/**
+ * 拜访好友的异常包裹层 */
     internal suspend fun doVisitFriends() = withErrorLog("拜访好友") { visitFriendsInternal() }
 
+/**
+ * 拜访实现：偷菜与祝福，受每日限额与保护时间约束 */
     internal suspend fun visitFriendsInternal() {
         val cfg = ConfigManager.getConfig()
         if (!cfg.enableSteal && !cfg.enableBless) {

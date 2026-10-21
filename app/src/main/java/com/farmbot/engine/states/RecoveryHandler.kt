@@ -28,6 +28,8 @@ internal class RecoveryHandler(private val ctx: FarmStateContext) {
 
     private suspend fun <T> withErrorLog(op: String, block: suspend () -> T?): T? = ctx.withErrorLog(op, block)
 
+/**
+ * 重连无障碍服务：等待服务自行恢复后交回导航 */
     internal suspend fun reconnectA11y() {
         rt.log("发起无障碍服务重连（客户端侧提示）")
         delay(1500)
@@ -47,6 +49,8 @@ internal class RecoveryHandler(private val ctx: FarmStateContext) {
     }
 
 
+/**
+ * 回桌面并重新拉起游戏，随后交回导航 */
     internal suspend fun recoverGame() {
         rt.log("执行游戏恢复流程: HOME→等待→重新导航")
         // v1.4.4: 真实执行 GLOBAL_ACTION_HOME 回桌面（此前仅打日志假装执行）

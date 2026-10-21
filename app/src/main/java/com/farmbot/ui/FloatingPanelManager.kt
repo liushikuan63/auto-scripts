@@ -137,6 +137,9 @@ class FloatingPanelManager(
     private var pendingDy = 0f
 
     @SuppressLint("ClickableViewAccessibility")
+/**
+ * 显示悬浮控制面板，返回是否成功
+ */
     fun show(): Boolean {
         if (isShowing) {
             Log.d(TAG, "悬浮窗已在显示")
@@ -380,6 +383,9 @@ class FloatingPanelManager(
         runCatching { windowManager?.updateViewLayout(view, params) }
     }
 
+/**
+ * 隐藏悬浮控制面板
+ */
     fun hide() {
         if (!isShowing) return
         try {
@@ -398,6 +404,9 @@ class FloatingPanelManager(
         }
     }
 
+/**
+ * 悬浮控制面板是否可见
+ */
     fun isVisible(): Boolean = isShowing
 
     private fun showSettingsDialog() {
@@ -415,15 +424,33 @@ private class OverlayLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val registryController = SavedStateRegistryController.create(this)
 
+/**
+ * 供 Compose 使用的生命周期（面板不在 Activity 内，需手动驱动）
+ */
     override val lifecycle: Lifecycle get() = lifecycleRegistry
+/**
+ * 供 Compose 使用的状态注册表
+ */
     override val savedStateRegistry: SavedStateRegistry get() = registryController.savedStateRegistry
 
+/**
+ * 驱动 Compose 生命周期：创建
+ */
     fun performCreate() {
         runCatching { registryController.performRestore(null) }
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
     }
+/**
+ * 驱动 Compose 生命周期：恢复
+ */
     fun performResume() { lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME) }
+/**
+ * 驱动 Compose 生命周期：暂停
+ */
     fun performPause() { lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE) }
+/**
+ * 驱动 Compose 生命周期：销毁
+ */
     fun performDestroy() { lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY) }
 }
 

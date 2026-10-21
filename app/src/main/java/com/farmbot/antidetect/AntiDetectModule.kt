@@ -39,12 +39,18 @@ object AntiDetectModule {
         reset()
     }
 
+/**
+ * 重置计时与计数：新一轮自动化开始前调用
+ */
     fun reset() {
         actionCount = 0
         lastActionTime = 0L
         currentRhythmFactor = 1.0
     }
 
+/**
+ * 取本次动作前的等待时长（按节奏因子动态变化）
+ */
     fun getDelay(config: TimingConfig = TimingConfig()): Long {
         val randomDelay = Random.nextLong(
             config.baseDelayMs - config.varianceMs,
@@ -57,27 +63,45 @@ object AntiDetectModule {
         return adjustedDelay.coerceAtMost(MAX_DELAY_MS)
     }
 
+/**
+ * 拟人点击时长
+ */
     fun getHumanClickDuration(): Long {
         return Random.nextLong(MIN_CLICK_DURATION, MAX_CLICK_DURATION)
     }
 
+/**
+ * 拟人滑动时长
+ */
     fun getHumanSwipeDuration(): Long {
         return Random.nextLong(MIN_SWIPE_DURATION, MAX_SWIPE_DURATION)
     }
 
+/**
+ * 拟人长按时长
+ */
     fun getHumanLongPressDuration(): Long {
         return Random.nextLong(400L, 700L)
     }
 
+/**
+ * 带轻微偏移的点击时长（避免每次完全一致）
+ */
     fun getBiasClickDuration(): Long {
         val base = Random.nextLong(MIN_CLICK_DURATION, MAX_CLICK_DURATION)
         return (base * 1.5).toLong().coerceAtMost(180L)
     }
 
+/**
+ * 是否模拟一次误触
+ */
     fun shouldSimulateFalseTrigger(): Boolean {
         return Random.nextFloat() < FALSE_TRIGGER_PROBABILITY
     }
 
+/**
+ * 误触发生的坐标
+ */
     fun getFalseTriggerLocation(
         screenWidth: Int,
         screenHeight: Int,
@@ -98,6 +122,9 @@ object AntiDetectModule {
         return Pair(falseX, falseY)
     }
 
+/**
+ * 记录一次已执行动作（用于节奏与疲劳计算）
+ */
     fun recordAction() {
         actionCount++
         lastActionTime = System.currentTimeMillis()
@@ -110,6 +137,9 @@ object AntiDetectModule {
         updateRhythm()
     }
 
+/**
+ * 已记录的动作次数
+ */
     fun getActionCount(): Int = actionCount
 
     private fun updateRhythm() {
@@ -129,11 +159,17 @@ object AntiDetectModule {
         currentRhythmFactor = 1.0
     }
 
+/**
+ * 给基础时长加随机抖动
+ */
     fun getJitteredDuration(baseDuration: Long, jitterRatio: Float = 0.2f): Long {
         val jitter = baseDuration * jitterRatio
         return (baseDuration - jitter + Random.nextFloat() * jitter * 2).toLong()
     }
 
+/**
+ * 动作加速系数：随操作次数上升，模拟熟练度
+ */
     fun getAccelerationFactor(): Float {
         return when {
             actionCount <= 1 -> 0.6f
@@ -144,11 +180,17 @@ object AntiDetectModule {
         }
     }
 
+/**
+ * 是否该插入一次休息
+ */
     fun shouldTakeBreak(): Boolean {
         return actionCount >= MAX_CONSECUTIVE_ACTIONS * 2 &&
                 Random.nextFloat() < 0.3
     }
 
+/**
+ * 休息时长
+ */
     fun getBreakDuration(): Long {
         return Random.nextLong(2000L, 5000L)
     }

@@ -18,6 +18,9 @@ class OneKeyFarmingSupport(private val rt: FarmRuntime, private val ocr: OcrClic
     /** 上次选种时间：一键务农每轮浇水/收获都会触发，限频避免反复开关种子面板 */
     @Volatile private var lastSeedSelectAt = 0L
 
+/**
+ * 执行一轮一键务农：点一键务农 → 打开设置面板 → 勾选 → 确定。
+ * 返回本轮实际执行次数，0 表示未找到入口而跳过 */
     internal suspend fun doOneKeyFarming(): Int {
         // 确保"一键务农"可见（需靠近雕像才显示），否则先走位逼近
         if (!ocr.ocrContainsAny("一键务农", "键务农") && !movement.moveTowardsStatue()) {
@@ -179,6 +182,8 @@ class OneKeyFarmingSupport(private val rt: FarmRuntime, private val ocr: OcrClic
     }
 
 
+/**
+ * 配置里指定的作物在当前农场等级是否可用；不可用返回 null */
     internal fun availableConfiguredCrop(name: String, farmLevel: Int): String? {
         val normalized = name.trim().takeIf { it.isNotEmpty() } ?: return null
         return CropDatabase.find(normalized)

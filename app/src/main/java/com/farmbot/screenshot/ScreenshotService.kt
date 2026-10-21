@@ -130,13 +130,22 @@ class ScreenshotService : Service() {
         fun getService(): ScreenshotService = this@ScreenshotService
     }
 
+/**
+ * 绑定服务，返回 Binder
+ */
     override fun onBind(intent: Intent?): IBinder = binder
 
+/**
+ * 服务创建：准备投影与帧缓存
+ */
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "ScreenshotService created")
     }
 
+/**
+ * 启动命令：维持前台运行并维持录屏
+ */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "ScreenshotService started")
         // Android 14+: createVirtualDisplay 前必须先进入 mediaProjection 类型前台服务
@@ -226,6 +235,9 @@ class ScreenshotService : Service() {
         Log.w(TAG, "已发出录屏失效告警: $reason")
     }
 
+/**
+ * 服务销毁：释放投影与帧缓存
+ */
     override fun onDestroy() {
         super.onDestroy()
         Companion.stopCapture()
@@ -238,6 +250,9 @@ class ScreenshotService : Service() {
     }
 
     @SuppressLint("WrongConstant")
+/**
+ * 用用户授权的结果码与 Intent 启动 MediaProjection 录屏
+ */
     fun startCapture(resultCode: Int, data: Intent): Boolean {
         if (mediaProjection != null && virtualDisplay != null) {
             Log.w(TAG, "Capture already running")
@@ -321,6 +336,9 @@ class ScreenshotService : Service() {
         lastFrameAtMs = System.currentTimeMillis()
     }
 
+/**
+ * 取当前帧（可能为空）
+ */
     fun captureOnce(): Mat? = synchronized(frameLock) {
         val image = currentImage
         if (image == null) {
@@ -331,6 +349,9 @@ class ScreenshotService : Service() {
         }
     }
 
+/**
+ * 强制等待一帧新画面后返回
+ */
     fun captureFresh(): Mat? = synchronized(frameLock) {
         val image = runCatching { imageReader?.acquireLatestImage() }.getOrNull()
         if (image != null) {
@@ -447,12 +468,18 @@ class ScreenshotService : Service() {
         return rgbMat
     }
 
+/**
+ * 屏幕宽度
+ */
     fun getScreenWidth(): Int {
         val metrics = DisplayMetrics()
         windowManager.defaultDisplay.getRealMetrics(metrics)
         return metrics.widthPixels
     }
 
+/**
+ * 屏幕高度
+ */
     fun getScreenHeight(): Int {
         val metrics = DisplayMetrics()
         windowManager.defaultDisplay.getRealMetrics(metrics)

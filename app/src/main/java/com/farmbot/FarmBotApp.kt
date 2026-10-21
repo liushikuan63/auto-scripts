@@ -26,6 +26,9 @@ class FarmBotApp : Application() {
             private set
     }
 
+/**
+ * 应用初始化：配置、日志与崩溃兜底
+ */
     override fun onCreate() {
         super.onCreate()
         instance = this

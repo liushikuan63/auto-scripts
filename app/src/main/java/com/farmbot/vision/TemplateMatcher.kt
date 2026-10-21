@@ -27,6 +27,9 @@ object TemplateMatcher {
 
     private const val METHOD = Imgproc.TM_CCOEFF_NORMED
 
+/**
+ * 模板匹配：返回全部命中
+ */
     fun match(
         source: Mat,
         template: Mat,
@@ -70,6 +73,9 @@ object TemplateMatcher {
         return matches
     }
 
+/**
+ * 单目标模板匹配：返回最佳命中
+ */
     fun matchSingle(
         source: Mat,
         template: Mat,
@@ -101,6 +107,9 @@ object TemplateMatcher {
         }
     }
 
+/**
+ * 多尺度模板匹配：应对分辨率差异
+ */
     fun matchMultiScale(
         source: Mat,
         template: Mat,

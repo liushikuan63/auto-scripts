@@ -61,6 +61,9 @@ object GameSceneDetector {
     @Volatile private var lastDetectTime = 0L
 
     private val _currentScene = MutableStateFlow(Scene.UNKNOWN)
+/**
+ * 当前识别出的游戏场景（大厅 / 农场 / 其他）
+ */
     val currentScene: StateFlow<Scene> = _currentScene.asStateFlow()
 
     /**

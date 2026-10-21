@@ -80,6 +80,9 @@ class FarmBotForegroundService : Service() {
         }
     }
 
+/**
+ * 前台服务创建：建立常驻通知
+ */
     override fun onCreate() {
         super.onCreate()
         createChannel()
@@ -92,6 +95,9 @@ class FarmBotForegroundService : Service() {
         collectLogsForNotification()
     }
 
+/**
+ * 前台服务启动：按命令启停引擎
+ */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // v1.4.6: 仅显式 ACTION_START 启动引擎；KEEP_ALIVE（App 打开/开机自启）只保活不隐式开跑
         if (intent?.action == ACTION_START) {
@@ -100,6 +106,9 @@ class FarmBotForegroundService : Service() {
         return START_STICKY
     }
 
+/**
+ * 不提供绑定
+ */
     override fun onBind(p0: Intent?): IBinder? = null
 
     private fun collectLogsForNotification() {
@@ -149,6 +158,9 @@ class FarmBotForegroundService : Service() {
     private fun commandIntent(action: String): Intent =
         Intent(action).setPackage(packageName)
 
+/**
+ * 前台服务销毁
+ */
     override fun onDestroy() {
         runCatching { unregisterReceiver(receiver) }
         collectJob?.cancel()

@@ -9,9 +9,17 @@ import com.farmbot.engine.FarmState
  * 因此每个处理器都可以用假上下文在 JVM 单测里构造。
  */
 internal interface FarmStateContext {
+/**
+ * 运行时：共享依赖、计数与日志 */
     val rt: FarmRuntime
+/**
+ * OCR 定位与点击链路 */
     val ocrClick: OcrClickSupport
+/**
+ * 走位支撑 */
     val movement: MovementSupport
+/**
+ * 一键务农与选种 */
     val oneKey: OneKeyFarmingSupport
 
     /** 在当前状态的互斥锁内同步切换状态（等价于原 transitionToInternal） */

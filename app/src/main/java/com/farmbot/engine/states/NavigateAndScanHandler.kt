@@ -122,6 +122,8 @@ internal class NavigateAndScanHandler(private val ctx: FarmStateContext) {
     }
 
 
+/**
+ * 导航入口：确认已在农场后转入扫描 */
     internal suspend fun navigateToFarm() {
         rt.log("导航至农场...")
         val success = doNavigateToFarm()
@@ -134,6 +136,8 @@ internal class NavigateAndScanHandler(private val ctx: FarmStateContext) {
     }
 
 
+/**
+ * 扫描入口：按成熟情况转入收获或浇水 */
     internal suspend fun scanCrops() {
         rt.log("扫描作物状态...")
         // 避免在大厅乱点并虚假报告
@@ -190,13 +194,19 @@ internal class NavigateAndScanHandler(private val ctx: FarmStateContext) {
     }
 
 
+/**
+ * 导航的异常包裹层 */
     internal suspend fun doNavigateToFarm(): Boolean {
         return withErrorLog("导航至农场") { navigateToFarmInternal() } ?: false
     }
 
+/**
+ * 是否存在成熟作物（异常包裹层） */
     internal suspend fun checkRipeCrops(): Boolean =
         withErrorLog("检测成熟作物") { scanForRipeCrops() } ?: false
 
+/**
+ * 导航实现：确认农场页面 → 必要时真实拉起游戏 → 校正农场等级 */
     internal suspend fun navigateToFarmInternal(): Boolean {
         val gamePkg = "com.tencent.tmgp.sgame"
         // v1.4.4: 游戏不在前台时经系统真实拉起游戏并等待启动（此前为纯日志模拟且恒返回成功）
@@ -265,6 +275,8 @@ internal class NavigateAndScanHandler(private val ctx: FarmStateContext) {
     }
 
 
+/**
+ * 扫描实现：OCR 找成熟标识，识别不到时兜底交给一键务农 */
     internal suspend fun scanForRipeCrops(): Boolean {
         // v1.4.4: 此前为 Random.nextDouble()<0.55 纯随机判定 → 改为真实OCR检测成熟标识
         val provider = rt.screenshotProvider

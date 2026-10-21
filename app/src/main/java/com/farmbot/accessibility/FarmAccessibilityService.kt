@@ -81,6 +81,9 @@ class FarmAccessibilityService : AccessibilityService() {
     private var gameForegroundJob: Job? = null
     private var pausedForGameBackground = false
 
+/**
+ * 无障碍服务创建：初始化目标包检测与事件监听
+ */
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -94,6 +97,9 @@ class FarmAccessibilityService : AccessibilityService() {
         Logger.i("FarmAccessibilityService", "onCreate() 服务已启动")
     }
 
+/**
+ * 无障碍事件入口：转发给前台应用与场景检测，并按配置启停引擎
+ */
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
         // 1. 交给前台App检测器处理（识别游戏/目标App）
@@ -107,11 +113,17 @@ class FarmAccessibilityService : AccessibilityService() {
         }
     }
 
+/**
+ * 无障碍服务被打断：记录状态并停止推进
+ */
     override fun onInterrupt() {
         Timber.w("FarmAccessibilityService interrupted")
         isServiceConnected = false
     }
 
+/**
+ * 无障碍连接成功：绑定执行器、开启目标游戏检测并恢复引擎
+ */
     override fun onServiceConnected() {
         super.onServiceConnected()
         isServiceConnected = true
@@ -169,6 +181,9 @@ class FarmAccessibilityService : AccessibilityService() {
         }
     }
 
+/**
+ * 解绑：停止目标游戏检测
+ */
     override fun onUnbind(intent: Intent?): Boolean {
         isServiceConnected = false
         Timber.i("FarmAccessibilityService unbound")
@@ -176,6 +191,9 @@ class FarmAccessibilityService : AccessibilityService() {
         return super.onUnbind(intent)
     }
 
+/**
+ * 重新绑定：重新登记目标游戏检测
+ */
     override fun onRebind(intent: Intent?) {
         super.onRebind(intent)
         isServiceConnected = true
@@ -183,6 +201,9 @@ class FarmAccessibilityService : AccessibilityService() {
         observeGameForeground()
     }
 
+/**
+ * 服务销毁：释放执行器与检测器
+ */
     override fun onDestroy() {
         runCatching { gameForegroundJob?.cancel() }
         runCatching { scope.cancel() }
@@ -221,6 +242,9 @@ class FarmAccessibilityService : AccessibilityService() {
         return ok
     }
 
+/**
+ * 按矩形中心点击
+ */
     fun click(rect: Rect): Boolean = click(rect.centerX(), rect.centerY())
 
     /**
@@ -238,6 +262,9 @@ class FarmAccessibilityService : AccessibilityService() {
         return click(rect)
     }
 
+/**
+ * 按控件 viewId 查找并点击节点
+ */
     fun clickById(viewId: String): Boolean {
         val root = rootInActiveWindow ?: return false
         val nodes = root.findAccessibilityNodeInfosByViewId(viewId)
@@ -262,6 +289,9 @@ class FarmAccessibilityService : AccessibilityService() {
         return ok
     }
 
+/**
+ * 贝塞尔曲线滑动：控制点随机化，避免直线轨迹
+ */
     fun swipeBezier(fromX: Int, fromY: Int, toX: Int, toY: Int, durationMs: Long = 500): Boolean {
         val path = GestureBuilder.buildBezierPath(fromX, fromY, toX, toY)
         val jittered = RandomDelay.durationJitter(durationMs, 0.25f)
@@ -273,12 +303,21 @@ class FarmAccessibilityService : AccessibilityService() {
         return ok
     }
 
+/**
+ * 向上滚动指定距离
+ */
     fun scrollUp(centerX: Int, centerY: Int, distance: Int = 400): Boolean =
         swipeBezier(centerX, centerY + distance / 2, centerX, centerY - distance / 2)
 
+/**
+ * 向下滚动指定距离
+ */
     fun scrollDown(centerX: Int, centerY: Int, distance: Int = 400): Boolean =
         swipeBezier(centerX, centerY - distance / 2, centerX, centerY + distance / 2)
 
+/**
+ * 按方向滚动（方向取无障碍的滚动常量）
+ */
     fun scroll(direction: Int, centerX: Int, centerY: Int, distance: Int = 400): Boolean {
         return when (direction) {
             0 -> scrollUp(centerX, centerY, distance)
@@ -326,11 +365,23 @@ class FarmAccessibilityService : AccessibilityService() {
     // ==================== 全局动作 ====================
 
     fun performGlobalBack(): Boolean = performGlobalAction(GLOBAL_ACTION_BACK)
+/**
+ * 发送系统 HOME 动作：回到桌面用于重启游戏
+ */
     fun performGlobalHome(): Boolean = performGlobalAction(GLOBAL_ACTION_HOME)
+/**
+ * 发送系统最近任务动作
+ */
     fun performGlobalRecent(): Boolean = performGlobalAction(GLOBAL_ACTION_RECENTS)
 
+/**
+ * 当前窗口的根节点（农场为自绘界面时通常为空）
+ */
     fun getRootNode(): AccessibilityNodeInfo? = rootInActiveWindow
 
+/**
+ * 导出当前窗口的全部文本，用于排查识别问题
+ */
     fun dumpAllText(): String {
         val root = rootInActiveWindow ?: return ""
         val sb = StringBuilder()

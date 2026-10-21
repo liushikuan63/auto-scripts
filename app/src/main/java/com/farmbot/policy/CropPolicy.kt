@@ -24,18 +24,54 @@ data class CropPolicy(
     val matureHsvMin: Float = 15f,            // 成熟 HSV H 下限
     val matureHsvMax: Float = 35f,            // 成熟 HSV H 上限
     val matureMinSaturation: Float = 0.3f,    // 成熟最小饱和度
+/**
+ * 成熟状态的模板文件名
+ */
     val templateMature: String = "crop_mature.png",
+/**
+ * 未成熟状态的模板文件名
+ */
     val templateImmature: String = "crop_immature.png",
+/**
+ * 浇水按钮的模板文件名
+ */
     val templateWaterBtn: String = "btn_water.png",
+/**
+ * 收获按钮的模板文件名
+ */
     val templateHarvestBtn: String = "btn_harvest.png",
+/**
+ * 是否允许偷菜
+ */
     val enableSteal: Boolean = true,
+/**
+ * 是否允许祝福
+ */
     val enableBless: Boolean = true,
+/**
+ * 是否执行每日对战
+ */
     val dailyBattle: Boolean = true,
+/**
+ * 对战中被压制后的投降等待秒数
+ */
     val surrenderAfterSec: Int = 180,
     val sellMode: String = "NONE",           // NONE / SELL_ALL / SELL_MAXED
+/**
+ * 升级优先级策略（LAND_FIRST 等）
+ */
     val upgradePriority: String = "LAND_FIRST",
+/**
+ * 每次运行都主动开地
+ */
     val expandAlways: Boolean = false,
+/**
+ * 完美模式：更激进的操作节奏
+ */
     val perfectMode: Boolean = false,
+/**
+ * 备注（策略用途说明）
+ */
     val notes: String = ""
 ) {
     companion object {

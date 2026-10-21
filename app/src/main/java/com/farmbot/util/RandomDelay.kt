@@ -19,14 +19,26 @@ object RandomDelay {
     fun randomInt(min: Int, max: Int): Int =
         if (max >= min) Random.nextInt(min, max + 1) else min
 
+/**
+ * 区间内随机长整数
+ */
     fun randomLong(min: Long, max: Long): Long =
         if (max >= min) Random.nextLong(min, max + 1) else min
 
+/**
+ * 区间内随机浮点数
+ */
     fun randomFloat(min: Float, max: Float): Float =
         Random.nextFloat() * (max - min) + min
 
+/**
+ * 按概率判定是否成立
+ */
     fun chance(probability: Float): Boolean = Random.nextFloat() < probability
 
+/**
+ * 从列表中随机取一个
+ */
     fun <T> pickOne(list: List<T>): T = list[Random.nextInt(list.size)]
 
     // ==================== 分布延迟 ====================
@@ -102,17 +114,29 @@ object RandomDelay {
         else if (Random.nextFloat() < 0.6f) randomLong(400, 1200)
         else randomLong(1200, 3000)
 
+/**
+ * 页面加载等待时长（泊松分布并限幅）
+ */
     fun pageLoadWait(): Long = poissonDelay(1500).coerceIn(800, 5000)
 
+/**
+ * 犹豫时长：点击前的短暂停顿
+ */
     fun hesitationDelay(): Long =
         if (Random.nextFloat() < 0.15f) randomLong(500, 2000) else 0
 
+/**
+ * 按文本长度估算的阅读时长
+ */
     fun readingDelay(textLength: Int): Long {
         val cps = randomFloat(5f, 8f)
         val base = (textLength / cps * 1000).toLong()
         return base.coerceIn(300, 5000) + hesitationDelay()
     }
 
+/**
+ * 拟人化等待：按基础时长加抖动
+ */
     fun humanizedDelay(
         minMs: Long = 200,
         maxMs: Long = 2000,
@@ -153,9 +177,15 @@ object RandomDelay {
         }
     }
 
+/**
+ * 带抖动的阻塞等待
+ */
     fun sleepWithJitter(baseMs: Long, jitterPercent: Float = 0.3f) =
         sleep(durationJitter(baseMs, jitterPercent))
 
+/**
+ * 按概率插入一次空闲等待
+ */
     fun maybeIdle(idleProbability: Float, minMs: Long, maxMs: Long): Long =
         if (chance(idleProbability)) randomLong(minMs, maxMs) else 0L
 
@@ -167,11 +197,17 @@ object RandomDelay {
         return pattern[idx] + randomLong(-100, 200)
     }
 
+/**
+ * 按累计操作次数判断是否该休息
+ */
     fun shouldTakeBreak(operationCount: Int): Boolean {
         val step = randomInt(50, 80)
         return operationCount > 0 && operationCount % step == 0 && chance(0.7f)
     }
 
+/**
+ * 休息时长
+ */
     fun breakDuration(): Long = randomLong(3000, 15000)
 
     // ==================== 坐标 & 偏移 ====================
@@ -179,14 +215,23 @@ object RandomDelay {
     fun clickOffset(maxPx: Int = 8): Pair<Int, Int> =
         Pair(randomInt(-maxPx, maxPx), randomInt(-maxPx, maxPx))
 
+/**
+ * 贝塞尔滑动的两个随机控制点
+ */
     fun bezierControlOffset(rangePx: Int): Pair<Pair<Int, Int>, Pair<Int, Int>> =
         Pair(
             Pair(randomInt(-rangePx, rangePx), randomInt(-rangePx / 2, rangePx / 2)),
             Pair(randomInt(-rangePx, rangePx), randomInt(-rangePx / 2, rangePx / 2))
         )
 
+/**
+ * 按概率判定是否模拟误触
+ */
     fun shouldMistouch(probability: Float = 0.05f): Boolean = chance(probability)
 
+/**
+ * 误触发生的随机坐标
+ */
     fun falseTriggerLocation(
         screenW: Int, screenH: Int,
         baseX: Int, baseY: Int,

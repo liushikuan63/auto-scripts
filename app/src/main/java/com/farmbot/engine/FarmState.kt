@@ -18,6 +18,8 @@ sealed class FarmState {
     object DailyBattle : FarmState()
     object UpgradeDecision : FarmState()
 
+/**
+ * 状态的中文展示名，用于日志与界面 */
     fun displayName(): String = when (this) {
         Idle -> "空闲"
         NavigateToFarm -> "导航至农场"

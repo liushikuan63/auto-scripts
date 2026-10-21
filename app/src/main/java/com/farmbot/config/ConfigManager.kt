@@ -68,11 +68,17 @@ object ConfigManager {
             .catch { emit(emptyPreferences()) }
             .map { p -> p.toFarmConfig() }
 
+/**
+ * 异步读取配置（DataStore）
+ */
     suspend fun loadAsync(): FarmConfig = requireContext().configStore.data
         .catch { emit(emptyPreferences()) }
         .first()
         .toFarmConfig()
 
+/**
+ * 异步保存配置
+ */
     suspend fun saveAsync(new: FarmConfig) {
         val generation = synchronized(generationLock) { ++saveGeneration }
         persistenceMutex.withLock {
@@ -92,6 +98,9 @@ object ConfigManager {
 
     fun getConfig(): FarmConfig = cached
 
+/**
+ * 保存配置：写 DataStore 并同步更新内存副本
+ */
     fun save(new: FarmConfig) {
         cached = new
         saveToSp(new)

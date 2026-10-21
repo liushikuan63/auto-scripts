@@ -38,9 +38,15 @@ class PolicyManager(private val context: Context) {
     private val sp = context.getSharedPreferences(SP_NAME, Context.MODE_PRIVATE)
 
     private val _activePolicy = MutableStateFlow(CropPolicy.DEFAULT)
+/**
+ * 当前生效的作物策略流
+ */
     val activePolicy: StateFlow<CropPolicy> = _activePolicy.asStateFlow()
 
     private val _policies = MutableStateFlow<List<CropPolicy>>(emptyList())
+/**
+ * 全部已保存策略的流
+ */
     val policies: StateFlow<List<CropPolicy>> = _policies.asStateFlow()
 
     init {
@@ -74,9 +80,15 @@ class PolicyManager(private val context: Context) {
         Logger.i("PolicyManager", "loaded ${list.size} policies from ${dir.absolutePath}")
     }
 
+/**
+ * 按 id 取策略
+ */
     fun getPolicy(id: String): CropPolicy? =
         _policies.value.firstOrNull { it.id == id } ?: readPolicy(id)
 
+/**
+ * 写入 / 更新一条策略
+ */
     fun writePolicy(p: CropPolicy) {
         val f = File(dir, "${p.id}.json")
         f.writeText(json.encodeToString(CropPolicy.serializer(), p))
@@ -136,6 +148,9 @@ class PolicyManager(private val context: Context) {
         if (_activePolicy.value.id == p.id) _activePolicy.value = p
     }
 
+/**
+ * 删除一条策略
+ */
     fun delete(id: String): Boolean {
         if (id == "default") {
             Logger.w("PolicyManager", "默认策略不可删除")
@@ -199,5 +214,8 @@ class PolicyManager(private val context: Context) {
         list.size
     }.getOrDefault(0)
 
+/**
+ * 策略文件所在目录
+ */
     fun getDir(): File = dir
 }

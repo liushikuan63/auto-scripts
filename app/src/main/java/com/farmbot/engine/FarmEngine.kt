@@ -68,13 +68,23 @@ class FarmEngine private constructor(private val context: Context) {
     private var ocr = OcrHelper()
 
     private val _engineState = MutableStateFlow(EngineState.STOPPED)
+/**
+ * 引擎对外状态流：RUNNING / PAUSED / STOPPED */
     val engineState: StateFlow<EngineState> = _engineState.asStateFlow()
 
     private val _statusMessage = MutableStateFlow("引擎未启动")
+/**
+ * 状态提示文案流，供主界面与悬浮面板展示当前处境 */
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
 
+/**
+ * 当前农场状态（FarmState）流，直接透出状态机的状态 */
     val currentState = stateMachine.currentState
+/**
+ * 引擎是否正在运行 */
     val isRunning = stateMachine.isRunning
+/**
+ * 引擎日志流，透出状态机的日志缓冲 */
     val logs = stateMachine.logs
 
     init {
@@ -84,6 +94,8 @@ class FarmEngine private constructor(private val context: Context) {
         stateMachine.setOnCaptureLost { pause() }
     }
 
+/**
+ * 注入截图服务：录屏授权就绪后调用，OCR 文字定位依赖该通道 */
     fun setScreenshotService(svc: ScreenshotService?) {
         screenshotService = svc
         collector.setCaptureService(svc)
@@ -95,6 +107,8 @@ class FarmEngine private constructor(private val context: Context) {
         Log.i(TAG, "setScreenshotService ok: ${svc != null}")
     }
 
+/**
+ * 注入无障碍服务：无障碍连接后调用，注入动作执行器并开启目标游戏检测 */
     fun setAccessibilityService(svc: FarmAccessibilityService?) {
         // 懒创建 ActionExecutor
         val svcNonNull = svc ?: return
@@ -113,11 +127,21 @@ class FarmEngine private constructor(private val context: Context) {
         Log.i(TAG, "setAccessibilityService ok (executor 已注入状态机)")
     }
 
+/**
+ * 动作执行器：无障碍服务连接后才存在，未连接时为 null（此时走模拟流程） */
     fun getActionExecutor(): ActionExecutor? = actionExecutor
+/**
+ * 模板采集器：供模板采集界面与资源导入使用 */
     fun getTemplateCollector(): TemplateCollector = collector
+/**
+ * 模板匹配器：按模板在截图中查找目标 */
     fun getTemplateMatcher(): TemplateMatcher = matcher
+/**
+ * OCR 封装：中文文字识别入口 */
     fun getOcr(): OcrHelper = ocr
 
+/**
+ * 启动引擎：拉起状态机并进入导航流程 */
     fun start() {
         if (_engineState.value == EngineState.RUNNING) {
             Log.d(TAG, "引擎已在运行")
@@ -131,6 +155,8 @@ class FarmEngine private constructor(private val context: Context) {
         taskScheduler.start()
     }
 
+/**
+ * 暂停引擎：停止状态推进但保留依赖，重新授权录屏后可直接继续 */
     fun pause() {
         if (_engineState.value != EngineState.RUNNING) {
             Log.d(TAG, "引擎未在运行，无法暂停")
@@ -143,6 +169,8 @@ class FarmEngine private constructor(private val context: Context) {
         taskScheduler.cancelAllAlarms()
     }
 
+/**
+ * 停止引擎：结束状态推进并回到空闲 */
     fun stop() {
         if (_engineState.value == EngineState.STOPPED) {
             Log.d(TAG, "引擎已停止"); return
@@ -154,6 +182,8 @@ class FarmEngine private constructor(private val context: Context) {
         taskScheduler.cancelAllAlarms()
     }
 
+/**
+ * 立即执行一次浇水：供闹钟广播与调试工具调用 */
     fun triggerWateringNow() {
         // v1.4.34: 引擎已停止时不隐式启动（延续 v1.4.6 治理）。此前 STOPPED 时调 start()，
         // 导致 WorkManager 兜底周期任务 / 开机广播在应用启动或重启后静默开跑 [模拟] 流程无休止重试。
@@ -171,9 +201,15 @@ class FarmEngine private constructor(private val context: Context) {
         stateMachine.transitionTo(FarmState.ReconnectA11y)
     }
 
+/**
+ * 当前状态的中文名 */
     fun getStateDisplayName(): String = stateMachine.currentState.value.displayName()
+/**
+ * 日志快照：一次性取出当前全部日志 */
     fun getLogs(): List<String> = stateMachine.getLogs()
 
+/**
+ * 释放引擎资源：取消调度、释放执行器与截图通道 */
     fun destroy() {
         stop()
         stateMachine.destroy()

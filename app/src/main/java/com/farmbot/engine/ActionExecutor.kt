@@ -77,6 +77,8 @@ class ActionExecutor(
         return ActionResult(false, "未找到目标: $description")
     }
 
+/**
+ * 在整屏查找模板，并依次点击全部命中 */
     fun findAndClickAll(
         screenshot: Bitmap,
         templateName: String,
@@ -96,6 +98,8 @@ class ActionExecutor(
         return successCount
     }
 
+/**
+ * 在指定区域查找模板并点击命中 */
     fun findAndClickInRegion(
         screenshot: Bitmap,
         templateName: String,
@@ -212,6 +216,8 @@ class ActionExecutor(
         return ActionResult(false, "等待超时: $description")
     }
 
+/**
+ * 等待目标从画面消失，超时返回 false */
     fun waitForDisappear(
         screenshotProvider: () -> Bitmap?,
         templateName: String,
@@ -273,6 +279,8 @@ class ActionExecutor(
         val isRequired: Boolean = true
     )
 
+/**
+ * 按顺序执行一串动作步骤，任一步失败即停止 */
     fun executeSequence(
         screenshotProvider: () -> Bitmap?,
         actions: List<ActionStep>

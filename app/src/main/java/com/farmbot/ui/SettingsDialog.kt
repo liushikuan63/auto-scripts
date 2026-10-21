@@ -67,6 +67,9 @@ class SettingsDialogManager {
 }
 
 @Composable
+/**
+ * 设置面板的 Compose 内容：配置项、策略编辑与模板导入
+ */
 fun SettingsContent(
     config: FarmConfig,
     onConfigChange: (FarmConfig) -> Unit,

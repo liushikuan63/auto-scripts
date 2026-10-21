@@ -32,6 +32,8 @@ internal class CropOpsHandler(private val ctx: FarmStateContext, private val nav
 
     private suspend fun <T> withErrorLog(op: String, block: suspend () -> T?): T? = ctx.withErrorLog(op, block)
 
+/**
+ * 浇水入口：完成后转入收获 */
     internal suspend fun waterCrops() {
         rt.log("执行浇水...")
         val cfg = ConfigManager.getConfig()
@@ -97,6 +99,8 @@ internal class CropOpsHandler(private val ctx: FarmStateContext, private val nav
     }
 
 
+/**
+ * 收获入口：完成后转入售卖 / 存储 */
     internal suspend fun harvestCrops() {
         rt.log("执行收获...")
         val harvested = doHarvestCrops()
@@ -106,6 +110,8 @@ internal class CropOpsHandler(private val ctx: FarmStateContext, private val nav
     }
 
 
+/**
+ * 售卖 / 存储入口：完成后转入拜访好友 */
     internal suspend fun sellOrStore() {
         rt.log("处理仓库/售卖...")
         doSellOrStore()
@@ -113,14 +119,22 @@ internal class CropOpsHandler(private val ctx: FarmStateContext, private val nav
     }
 
 
+/**
+ * 浇水的异常包裹层，返回处理株数 */
     internal suspend fun doWaterCrops(): Int =
         withErrorLog("浇水") { waterCropsInternal() } ?: 0
 
+/**
+ * 收获的异常包裹层，返回收获株数 */
     internal suspend fun doHarvestCrops(): Int =
         withErrorLog("收获") { harvestCropsInternal() } ?: 0
 
+/**
+ * 售卖 / 存储的异常包裹层 */
     internal suspend fun doSellOrStore() = withErrorLog("售卖/存储") { sellOrStoreInternal() }
 
+/**
+ * 浇水实现：选种后走一键务农，受每日操作上限约束 */
     internal suspend fun waterCropsInternal(): Int {
         // === 真实模式：优先点"一键浇水"（Lv4+ 解锁，一次批量完成） ===
         // v1.4.4: 点击失败如实返回0交给上层恢复链，不再静默走假计数循环冒充真实进度
@@ -157,6 +171,8 @@ internal class CropOpsHandler(private val ctx: FarmStateContext, private val nav
     }
 
 
+/**
+ * 收获实现：同样走一键务农，一次覆盖收获与种植 */
     internal suspend fun harvestCropsInternal(): Int {
         // === 真实模式：优先点"一键收获"（Lv8+ 解锁） ===
         // v1.4.4: 点击失败如实返回0，不再随机编造收获株数

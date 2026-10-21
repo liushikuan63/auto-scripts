@@ -69,6 +69,9 @@ class FloatingLogView(context: Context) {
         Point(metrics.widthPixels, metrics.heightPixels)
     }
 
+/**
+ * 显示悬浮日志窗，返回是否成功
+ */
     fun show(): Boolean {
         if (attached) return true
 
@@ -187,6 +190,9 @@ class FloatingLogView(context: Context) {
         }
     }
 
+/**
+ * 隐藏悬浮日志窗
+ */
     fun hide() {
         if (!attached) return
         runCatching { collectJob?.cancel() }
@@ -204,8 +210,14 @@ class FloatingLogView(context: Context) {
         if (attached) applyMinimizeState()
     }
 
+/**
+ * 悬浮日志窗是否已显示
+ */
     fun isShown() = attached
 
+/**
+ * 释放悬浮日志窗
+ */
     fun destroy() {
         hide()
         runCatching { scope.cancel() }

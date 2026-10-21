@@ -79,6 +79,9 @@ class ApkTemplateImporter private constructor() {
     private val recognizer = ImageRecognizer.getInstance()
     private val importHistory = mutableMapOf<String, List<String>>()
 
+/**
+ * 从指定 APK 导入模板
+ */
     suspend fun importFromApk(
         context: Context,
         apkPath: String,
@@ -141,6 +144,9 @@ class ApkTemplateImporter private constructor() {
         )
     }
 
+/**
+ * 从已安装应用导入模板
+ */
     suspend fun importFromInstalledApp(
         context: Context,
         packageName: String,
@@ -158,6 +164,9 @@ class ApkTemplateImporter private constructor() {
         importFromApk(context, apkPath, selectedKeywords)
     }
 
+/**
+ * 从已安装的农场应用导入模板
+ */
     suspend fun importFromInstalledFarmApp(
         context: Context,
         selectedKeywords: Set<String>? = null
@@ -179,6 +188,9 @@ class ApkTemplateImporter private constructor() {
         importFromInstalledApp(context, app.packageName, selectedKeywords)
     }
 
+/**
+ * 扫描 APK 中可用的模板资源
+ */
     fun scanAvailableTemplates(apkPath: String): Map<String, List<TemplateMatch>> {
         val entries = reader.listImageResources(apkPath)
         val result = mutableMapOf<String, List<TemplateMatch>>()
@@ -193,16 +205,28 @@ class ApkTemplateImporter private constructor() {
         return result
     }
 
+/**
+ * 可导入的农场相关应用列表
+ */
     fun getAvailableFarmApps(context: Context): List<ApkResourceReader.InstalledAppInfo> {
         return reader.getInstalledFarmApps(context)
     }
 
+/**
+ * 导入历史：来源 -> 已导入模板名
+ */
     fun getImportHistory(): Map<String, List<String>> = importHistory.toMap()
 
+/**
+ * 清空导入历史
+ */
     fun clearImportHistory() {
         importHistory.clear()
     }
 
+/**
+ * 模板名与关键词的映射表
+ */
     fun getTemplateKeywords(): Map<String, List<String>> = TEMPLATE_KEYWORDS.toMap()
 
     private fun findBestMatches(

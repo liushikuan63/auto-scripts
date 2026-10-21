@@ -43,6 +43,9 @@ class DebugToolActivity : ComponentActivity() {
     private lateinit var ocr: OcrHelper
     private var lastShot: android.graphics.Bitmap? = null
 
+/**
+ * 调试工具页创建：提供状态查看与手动触发
+ */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val engine = FarmEngine.getInstance(this)

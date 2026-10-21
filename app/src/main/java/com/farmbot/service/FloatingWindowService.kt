@@ -139,6 +139,9 @@ class FloatingWindowService : Service() {
         Logger.i(TAG, "onCreate: FloatingWindowService 已启动为前台服务")
     }
 
+/**
+ * 悬浮窗服务启动：显示悬浮面板
+ */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         if (action != null) {
@@ -147,8 +150,14 @@ class FloatingWindowService : Service() {
         return START_STICKY // 被系统杀死后自动重启，保证悬浮窗高存活率
     }
 
+/**
+ * 不提供绑定
+ */
     override fun onBind(intent: Intent?): IBinder? = null
 
+/**
+ * 悬浮窗服务销毁：移除窗口
+ */
     override fun onDestroy() {
         running = false
         runCatching { unregisterReceiver(commandReceiver) }

@@ -54,6 +54,8 @@ class FarmStateMachine(
     }
 
     private val _currentState = MutableStateFlow<FarmState>(FarmState.Idle)
+/**
+ * 当前状态流：状态转换时对外推送 */
     val currentState: StateFlow<FarmState> = _currentState.asStateFlow()
 
     /** 运行时：共享依赖实例、计数与日志；业务实现一律通过 rt 访问 */
@@ -100,6 +102,8 @@ class FarmStateMachine(
     /** 注入录屏授权失效回调（v1.4.8）：由 FarmEngine 注入为暂停引擎+发告警通知 */
     fun setOnCaptureLost(cb: (() -> Unit)?) { rt.onCaptureLost = cb }
 
+/**
+ * 启动状态机：进入 NavigateToFarm 并开始推进 */
     fun start() {
         rt.scope.launch { mutex.withLock {
             if (rt.isRunning.value) return@withLock
@@ -115,6 +119,8 @@ class FarmStateMachine(
         }}
     }
 
+/**
+ * 暂停：取消当前状态任务并回到空闲，不释放依赖 */
     fun pause() {
         rt.setRunning(false)
         transitionGeneration.incrementAndGet()
@@ -125,6 +131,8 @@ class FarmStateMachine(
         }}
     }
 
+/**
+ * 停止：取消当前状态任务并回到空闲，由引擎层决定是否释放资源 */
     fun stop() {
         rt.setRunning(false)
         transitionGeneration.incrementAndGet()
@@ -135,6 +143,8 @@ class FarmStateMachine(
         }}
     }
 
+/**
+ * 请求切换到下一状态：在互斥锁内排队执行；未运行时该请求被忽略 */
     fun transitionTo(next: FarmState) {
         rt.scope.launch { mutex.withLock { transitionToInternal(next) } }
     }
@@ -203,6 +213,8 @@ class FarmStateMachine(
         }
     }
 
+/**
+ * 释放：取消协程作用域并关闭 OCR */
     fun destroy() {
         rt.setRunning(false)
         transitionGeneration.incrementAndGet()

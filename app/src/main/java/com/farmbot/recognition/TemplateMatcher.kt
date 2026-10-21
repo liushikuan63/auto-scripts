@@ -31,7 +31,13 @@ class TemplateMatcher {
 
     private var threshold: Double = 0.85
 
+/**
+ * 设置匹配相似度阈值
+ */
     fun setThreshold(t: Double) { threshold = t }
+/**
+ * 当前匹配阈值
+ */
     fun getThreshold(): Double = threshold
 
     // ==================== 核心查找 ====================
@@ -76,6 +82,9 @@ class TemplateMatcher {
         return best
     }
 
+/**
+ * 在图中查找全部命中位置
+ */
     fun findAllTemplates(
         screenshot: Bitmap,
         template: Bitmap,
@@ -112,6 +121,9 @@ class TemplateMatcher {
         return out
     }
 
+/**
+ * 查找成熟作物位置
+ */
     fun findMatureCrops(
         screenshot: Bitmap,
         searchRegion: Rect? = null
@@ -164,12 +176,18 @@ class TemplateMatcher {
         return android.graphics.Color.rgb(r / c, g / c, b / c)
     }
 
+/**
+ * 判断该地块作物是否成熟
+ */
     fun isCropMature(bm: Bitmap, r: Rect): Boolean {
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(detectDominantColor(bm, r), hsv)
         return hsv[0] in 15f..35f && hsv[1] > 0.3f
     }
 
+/**
+ * 判断作物是否有可收获的光效
+ */
     fun hasHarvestGlow(bm: Bitmap, r: Rect): Boolean {
         val mat = bitmapToMat(bm)
         val roi = Mat(mat, r)
@@ -214,6 +232,9 @@ class TemplateMatcher {
         }
     }
 
+/**
+ * 在网格化的地块中逐格查找
+ */
     fun findInGrid(
         bm: Bitmap, tpl: Bitmap,
         gridBounds: Rect, rows: Int, cols: Int, name: String = ""
@@ -229,6 +250,9 @@ class TemplateMatcher {
         return out
     }
 
+/**
+ * 轮询等待目标出现
+ */
     fun waitForTemplate(
         provider: () -> Bitmap?,
         tpl: Bitmap,

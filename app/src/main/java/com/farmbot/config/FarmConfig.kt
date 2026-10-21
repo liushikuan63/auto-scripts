@@ -16,7 +16,13 @@ data class FarmConfig(
 
     // ===== 出售 / 升级 / 账号 =====
     val sellMode: SellMode = SellMode.NONE,
+/**
+ * 账号类型（普通账号 / 特殊账号，影响可用玩法）
+ */
     val accountType: AccountType = AccountType.NORMAL,
+/**
+ * 升级优先级：先开地还是先升级
+ */
     val upgradePriority: UpgradePriority = UpgradePriority.LAND_FIRST,
     val upgradeExpandAfter: Boolean = true,    // 升级后开地
     val expandAlways: Boolean = false,         // 每次都开地
@@ -24,6 +30,9 @@ data class FarmConfig(
 
     // ===== 偷菜/祝福 =====
     val enableSteal: Boolean = true,
+/**
+ * 是否执行好友祝福
+ */
     val enableBless: Boolean = true,
     // v1.4.35: 优先偷菜——启用时跳过自家农场(种植/浇水/收获)，优先拜访好友农场偷菜；
     // 默认 false：必须优先完成自家农场全部操作后才进入好友农场。

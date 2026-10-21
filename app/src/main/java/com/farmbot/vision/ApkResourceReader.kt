@@ -101,6 +101,9 @@ class ApkResourceReader private constructor() {
         val isFarmApp: Boolean
     )
 
+/**
+ * 扫描 APK 内的图片资源，返回汇总
+ */
     fun scanApk(apkPath: String): ApkResourceSummary? {
         val file = File(apkPath)
         if (!file.exists() || !file.canRead()) {
@@ -153,10 +156,16 @@ class ApkResourceReader private constructor() {
         }
     }
 
+/**
+ * 列出 APK 内的图片资源
+ */
     fun listImageResources(apkPath: String): List<ResourceEntry> {
         return scanApk(apkPath)?.imageEntriesList ?: emptyList()
     }
 
+/**
+ * 取出 APK 内的单个资源
+ */
     fun extractResource(apkPath: String, resourcePath: String): ResourceEntry? {
         val file = File(apkPath)
         if (!file.exists() || !file.canRead()) {
@@ -189,6 +198,9 @@ class ApkResourceReader private constructor() {
         }
     }
 
+/**
+ * 取出资源并解码为 OpenCV Mat
+ */
     fun extractAndDecodeToMat(apkPath: String, resourcePath: String): Mat? {
         val entry = extractResource(apkPath, resourcePath) ?: return null
         return try {
@@ -206,6 +218,9 @@ class ApkResourceReader private constructor() {
         }
     }
 
+/**
+ * 按关键词过滤资源
+ */
     fun filterByKeyword(entries: List<ResourceEntry>, keyword: String): List<ResourceEntry> {
         val lowerKeyword = keyword.lowercase()
         return entries.filter {
@@ -214,11 +229,17 @@ class ApkResourceReader private constructor() {
         }
     }
 
+/**
+ * 按扩展名过滤资源
+ */
     fun filterByExtension(entries: List<ResourceEntry>, extension: String): List<ResourceEntry> {
         val ext = extension.lowercase().trimStart('.')
         return entries.filter { it.extension == ext }
     }
 
+/**
+ * 列出设备上已安装的农场相关应用
+ */
     fun getInstalledFarmApps(context: Context): List<InstalledAppInfo> {
         val pm = context.packageManager
         val apps = mutableListOf<InstalledAppInfo>()
@@ -271,6 +292,9 @@ class ApkResourceReader private constructor() {
         return apps
     }
 
+/**
+ * 取已安装应用的 APK 路径
+ */
     fun getInstalledAppApkPath(context: Context, packageName: String): String? {
         return try {
             val pm = context.packageManager
@@ -282,6 +306,9 @@ class ApkResourceReader private constructor() {
         }
     }
 
+/**
+ * 扫描已安装应用的资源
+ */
     fun scanInstalledApp(context: Context, packageName: String): ApkResourceSummary? {
         val apkPath = getInstalledAppApkPath(context, packageName)
         if (apkPath == null) {
@@ -291,10 +318,16 @@ class ApkResourceReader private constructor() {
         return scanApk(apkPath)
     }
 
+/**
+ * 列出已安装应用中的图片资源
+ */
     fun listInstalledAppImages(context: Context, packageName: String): List<ResourceEntry> {
         return scanInstalledApp(context, packageName)?.imageEntriesList ?: emptyList()
     }
 
+/**
+ * 从已安装应用中取出资源
+ */
     fun extractResourceFromInstalledApp(
         context: Context,
         packageName: String,

@@ -50,7 +50,13 @@ import com.farmbot.ui.theme.TextSecondary
 
 /** 已安装应用条目（文件内共享） */
 private data class AppItem(
+/**
+ * 应用显示名
+ */
     val label: String,
+/**
+ * 应用包名
+ */
     val pkg: String
 )
 
@@ -63,6 +69,9 @@ private data class AppItem(
  */
 class AppPickerActivity : ComponentActivity() {
 
+/**
+ * 应用选择页创建：列出可导入的已安装应用
+ */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

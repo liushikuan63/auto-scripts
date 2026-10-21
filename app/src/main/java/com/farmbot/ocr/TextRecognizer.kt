@@ -31,6 +31,9 @@ class TextRecognizer(private val context: Context) {
         ChineseTextRecognizerOptions.Builder().build()
     )
 
+/**
+ * 从 OpenCV Mat 识别中文文本块
+ */
     suspend fun recognizeFromMat(
         mat: Mat,
         minConfidence: Float = DEFAULT_MIN_CONFIDENCE
@@ -49,6 +52,9 @@ class TextRecognizer(private val context: Context) {
         }
     }
 
+/**
+ * 只识别指定区域内的文字（省时并减少误命中）
+ */
     suspend fun recognizeRegion(
         mat: Mat,
         x: Int,
@@ -183,6 +189,9 @@ class TextRecognizer(private val context: Context) {
         return bitmap
     }
 
+/**
+ * 释放底层识别器
+ */
     fun close() {
         recognizer.close()
         Log.i(TAG, "TextRecognizer closed")

@@ -60,9 +60,15 @@ class MetricsCollector private constructor(private val context: Context) {
     private val pendingFlush = AtomicLong(0)
 
     private val _stats = MutableStateFlow<Map<String, Stats>>(emptyMap())
+/**
+ * 各识别项的统计流
+ */
     val stats: StateFlow<Map<String, Stats>> = _stats.asStateFlow()
 
     @Synchronized
+/**
+ * 记录一次识别结果（是否命中、置信度、耗时）
+ */
     fun record(key: String, found: Boolean, confidence: Double, latencyMs: Long) {
         val sample = Sample(key, found, confidence, latencyMs)
         val q = buffer.getOrPut(key) { ArrayDeque(MAX_PER_KEY) }
@@ -85,9 +91,15 @@ class MetricsCollector private constructor(private val context: Context) {
     )
 
     @Synchronized
+/**
+ * 取某一项的统计
+ */
     fun getStats(key: String): Stats? = _stats.value[key]
 
     @Synchronized
+/**
+ * 取全部统计
+ */
     fun getAllStats(): Map<String, Stats> = _stats.value
 
     private fun recomputeStats(key: String) {
@@ -143,6 +155,9 @@ class MetricsCollector private constructor(private val context: Context) {
     }
 
     @Synchronized
+/**
+ * 把统计落盘
+ */
     fun flush() {
         val all = buffer.values.flatten()
         if (all.isEmpty()) { pendingFlush.set(0); return }
@@ -167,6 +182,9 @@ class MetricsCollector private constructor(private val context: Context) {
 
     /** 清空内存统计（不影响磁盘日志） */
     @Synchronized
+/**
+ * 清空内存统计（保留已落盘数据）
+ */
     fun resetMemory() {
         buffer.clear()
         _stats.value = emptyMap()
@@ -187,5 +205,8 @@ class MetricsCollector private constructor(private val context: Context) {
         true
     }.getOrDefault(false)
 
+/**
+ * 统计文件所在目录
+ */
     fun getDir(): File = dir
 }

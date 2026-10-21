@@ -20,6 +20,9 @@ class WateringAlarmReceiver : BroadcastReceiver() {
         const val ACTION_WATERING_ALARM = "com.farmbot.action.WATERING_ALARM"
     }
 
+/**
+ * 收到浇水闹钟：触发引擎立即浇水
+ */
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ACTION_WATERING_ALARM || intent.action == Intent.ACTION_BOOT_COMPLETED) {
             Log.i(TAG, "收到闹钟广播: ${intent.action}")

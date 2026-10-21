@@ -88,6 +88,9 @@ class TemplateCollector(private val context: Context) {
         Timber.i("TemplateCollector initialized at: ${templateDir.absolutePath}")
     }
 
+/**
+ * 注入截图服务：采集模板需要从屏幕取图
+ */
     fun setCaptureService(svc: ScreenshotService?) { captureService = svc }
 
     // ==================== 采集步骤 ====================
@@ -117,6 +120,9 @@ class TemplateCollector(private val context: Context) {
         COUNTDOWN_AREA(TPL_COUNTDOWN_AREA, "倒计时区域", "请截取作物上方的倒计时数字区域", "states");
     }
 
+/**
+ * 全部采集步骤
+ */
     fun getAllSteps(): List<CollectStep> = CollectStep.values().toList()
 
     // ==================== 采集方法 ====================
@@ -127,6 +133,9 @@ class TemplateCollector(private val context: Context) {
         else -> stateDir
     }
 
+/**
+ * 采集指定区域的模板
+ */
     fun captureRegion(step: CollectStep, region: Rect, cb: (Boolean, String) -> Unit) {
         captureCurrentBitmap { bm ->
             if (bm == null) { cb(false, "截屏失败"); return@captureCurrentBitmap }
@@ -157,6 +166,9 @@ class TemplateCollector(private val context: Context) {
         }
     }
 
+/**
+ * 采集整屏模板
+ */
     fun captureFullScreen(step: CollectStep, cb: (Boolean, String) -> Unit) {
         captureCurrentBitmap { bm ->
             if (bm == null) { cb(false, "截屏失败"); return@captureCurrentBitmap }
@@ -226,12 +238,18 @@ class TemplateCollector(private val context: Context) {
     fun hasTemplate(name: String): Boolean =
         listOf(buttonDir, cropDir, stateDir).any { File(it, name).exists() }
 
+/**
+ * 取模板文件
+ */
     fun getTemplateFile(name: String): File? {
         return listOf(
             File(buttonDir, name), File(cropDir, name), File(stateDir, name)
         ).firstOrNull { it.exists() }
     }
 
+/**
+ * 按名称加载模板位图
+ */
     fun loadTemplate(name: String): Bitmap? {
         val f = getTemplateFile(name) ?: return null
         return try { BitmapFactory.decodeFile(f.absolutePath) } catch (t: Throwable) {
@@ -239,18 +257,30 @@ class TemplateCollector(private val context: Context) {
         }
     }
 
+/**
+ * 删除一个模板
+ */
     fun deleteTemplate(name: String): Boolean {
         val f = getTemplateFile(name) ?: return false
         return if (f.delete()) { collected.remove(name); true } else false
     }
 
+/**
+ * 清空全部模板
+ */
     fun clearAllTemplates() {
         listOf(buttonDir, cropDir, stateDir).forEach { d -> d.listFiles()?.forEach { it.delete() } }
         collected.clear()
     }
 
+/**
+ * 已采集的模板名列表
+ */
     fun getCollectedTemplates(): List<String> = collected.toList()
 
+/**
+ * 采集进度文案
+ */
     fun getCollectionInfo(): String = "已采集: ${collected.size} / ${CollectStep.values().size}"
 
     // ==================== 导入/导出 Zip ====================
@@ -270,6 +300,9 @@ class TemplateCollector(private val context: Context) {
         }.getOrDefault(false)
     }
 
+/**
+ * 从 zip 导入模板，返回导入数量
+ */
     fun importTemplates(zipFile: File): Int {
         var count = 0
         runCatching {
@@ -297,6 +330,9 @@ class TemplateCollector(private val context: Context) {
 
     enum class ScreenType { FARM, BATTLE, FRIEND_LIST, SHOP, MATCHING, LOADING, UNKNOWN }
 
+/**
+ * 识别当前处于哪个采集步骤
+ */
     fun detectCurrentScreen(cb: (ScreenType) -> Unit) {
         captureCurrentBitmap { bm ->
             if (bm == null) cb(ScreenType.UNKNOWN) else cb(analyzeScreen(bm))
