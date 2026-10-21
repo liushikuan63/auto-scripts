@@ -5,6 +5,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * 运行日志缓冲
+ *
+ * 同时输出到 Logcat 与内存环形缓冲（上限 500 条），供悬浮日志窗与调试工具回看。
+ */
 object LogUtil {
 
     private const val TAG = "FarmBot"

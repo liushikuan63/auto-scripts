@@ -8,6 +8,12 @@ import com.farmbot.policy.GameRules
 import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 
+/**
+ * 进入农场与作物扫描
+ *
+ * 负责把游戏从大厅带入农场页面（必要时经系统真实拉起游戏）、用 OCR 确认确实身处
+ * 农场页面并自动校正农场等级，随后扫描成熟作物，决定下一步是收获还是浇水。
+ */
 internal class NavigateAndScanHandler(private val ctx: FarmStateContext) {
 
     /** 与原 FarmStateMachine 保持同一日志 TAG，避免日志筛选行为变化 */

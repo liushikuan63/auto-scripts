@@ -9,6 +9,12 @@ import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 import kotlin.math.roundToInt
 
+/**
+ * 颜色识别
+ *
+ * 提供红 / 绿 / 蓝 / 黄 / 白 / 黑的标准色域，以及自定义色域、区域取色、
+ * 主色统计与按钮激活态判断，用于按颜色区分作物成熟度与界面元素。
+ */
 object ColorDetector {
 
     private const val TAG = "ColorDetector"

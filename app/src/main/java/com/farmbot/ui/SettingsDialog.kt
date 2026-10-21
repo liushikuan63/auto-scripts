@@ -47,6 +47,12 @@ import com.farmbot.vision.ApkTemplateImporter
 import com.farmbot.vision.ApkResourceReader
 import kotlinx.coroutines.launch
 
+/**
+ * 设置面板与 APK 模板导入界面
+ *
+ * 以 Compose 管理设置项的展开状态与本地草稿配置，并提供从已安装应用导入模板的流程：
+ * 挑选 APK → 扫描其中的图片资源 → 写入模板目录。
+ */
 class SettingsDialogManager {
 
     companion object {

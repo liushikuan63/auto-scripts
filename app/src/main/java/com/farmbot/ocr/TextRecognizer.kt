@@ -14,6 +14,12 @@ import org.opencv.android.Utils
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+/**
+ * ML Kit 中文文字识别封装
+ *
+ * 支持从 OpenCV Mat 或 Bitmap 识别中文文本块，按最小置信度过滤，
+ * 结果以文本块列表返回（每块含文字与边界框），并在 close() 时释放底层识别器。
+ */
 class TextRecognizer(private val context: Context) {
 
     companion object {

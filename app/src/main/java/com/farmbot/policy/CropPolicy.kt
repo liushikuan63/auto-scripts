@@ -9,6 +9,12 @@ import kotlinx.serialization.Serializable
  * JSON 持久化在外部存储 `FarmBot/policies/<id>.json`，可导入导出复用。
  */
 @Serializable
+/**
+ * 作物策略
+ *
+ * 描述一种作物的展示名、浇水间隔、成熟颜色区间（Hsv 上下界与最小饱和度）、
+ * 识别用的成熟 / 未成熟 / 浇水 / 收获模板名，以及偷菜、祝福等玩法开关。
+ */
 data class CropPolicy(
     val id: String,                          // 唯一标识（例如 "wheat", "tomato", "default"）
     val displayName: String,                 // 显示名称

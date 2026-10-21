@@ -1,3 +1,9 @@
+/**
+ * 主题与配色
+ *
+ * 提供深浅两套配色（农场绿主色、橙色强调、红色错误等）、卡片与文字色阶，
+ * 以及 Material3 的亮 / 暗色方案与排版。
+ */
 package com.farmbot.ui.theme
 
 import androidx.compose.material3.MaterialTheme

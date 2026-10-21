@@ -13,6 +13,12 @@ import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import org.opencv.imgproc.MatchTemplate
 
+/**
+ * OpenCV 模板加载与查找
+ *
+ * 模板可来自 assets、文件或字节流；查找支持返回首个匹配与全部匹配，
+ * 并提供模板释放接口，避免长期持有 Mat。
+ */
 class ImageRecognizer private constructor() {
 
     companion object {

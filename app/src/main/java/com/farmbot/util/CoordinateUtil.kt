@@ -5,6 +5,12 @@ import android.graphics.Point
 import android.util.DisplayMetrics
 import kotlin.math.abs
 
+/**
+ * 坐标换算工具
+ *
+ * 以基准宽度为标尺做分辨率无关的缩放：scaleX / scaleY / scalePoint / scaleRect，
+ * 另有中心点、两点距离、间距判断与 dp / px 互转。
+ */
 object CoordinateUtil {
 
     private var screenWidth: Int = 0

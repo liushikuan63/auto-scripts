@@ -8,6 +8,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.opencv.core.Mat
 
+/**
+ * 模板导入编排
+ *
+ * 汇总可导入的模板、已安装的农场相关应用与导入历史，给出导入面板需要的关键词列表。
+ */
 class ApkTemplateImporter private constructor() {
 
     companion object {

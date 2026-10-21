@@ -4,6 +4,12 @@ import com.farmbot.ocr.OcrHelper
 import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 
+/**
+ * OCR 命中结果
+ *
+ * 关键词文字与它在截图中边界框的中心坐标，同时带上截图尺寸，
+ * 便于调用方换算点击位置与做分辨率相关的判断。
+ */
 internal data class OcrHit(
     val keyword: String,
     val x: Int,
@@ -12,6 +18,13 @@ internal data class OcrHit(
     val imageHeight: Int
 )
 
+/**
+ * OCR 定位与点击链路
+ *
+ * 点击游戏内文字走三级降级链：无障碍节点精确匹配 → 模糊匹配 → 截屏 + OCR 坐标点击。
+ * 王者农场主体为 SurfaceView 渲染，节点树常为空，OCR 坐标层才是真正可用的路径。
+ * 同时提供全屏关键词存在性判断与关键词坐标定位，供面板确认与走位使用。
+ */
 class OcrClickSupport(private val rt: FarmRuntime) {
 
     /**

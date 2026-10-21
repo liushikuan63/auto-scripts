@@ -9,6 +9,12 @@ import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
+/**
+ * 自家农场操作：浇水、收获、售卖 / 存储
+ *
+ * 三者共用「一键务农」链路（见 OneKeyFarmingSupport）。每日操作次数达到配置上限后
+ * 立即停止本轮操作并回到空闲，避免超出账号的每日额度。
+ */
 internal class CropOpsHandler(private val ctx: FarmStateContext, private val navigator: NavigateAndScanHandler) {
 
     /** 与原 FarmStateMachine 保持同一日志 TAG，避免日志筛选行为变化 */

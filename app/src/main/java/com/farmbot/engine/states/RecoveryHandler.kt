@@ -5,6 +5,12 @@ import com.farmbot.engine.runtime.FarmStateContext
 import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 
+/**
+ * 异常恢复
+ *
+ * 两级恢复：重连无障碍服务，以及回到桌面后重新拉起游戏并导航。
+ * 两者结束后都交回 NavigateToFarm，由主流程继续推进。
+ */
 internal class RecoveryHandler(private val ctx: FarmStateContext) {
 
     /** 与原 FarmStateMachine 保持同一日志 TAG，避免日志筛选行为变化 */

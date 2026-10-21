@@ -18,6 +18,12 @@ import com.farmbot.config.ConfigManager
 import com.farmbot.config.FarmConfig
 import com.farmbot.ui.theme.FarmTheme
 
+/**
+ * 设置页宿主 Activity
+ *
+ * 以 Compose 承载设置界面（FarmTheme + SettingsContent），
+ * 负责把配置读写接到 ConfigManager 上。
+ */
 class SettingsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {

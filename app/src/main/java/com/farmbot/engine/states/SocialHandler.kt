@@ -9,6 +9,11 @@ import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
+/**
+ * 好友农场拜访：偷菜与祝福
+ *
+ * 受每日限额与偷菜保护时间（0:00~8:00）约束；需要操作时先走到对应地块再执行。
+ */
 internal class SocialHandler(private val ctx: FarmStateContext) {
 
     /** 与原 FarmStateMachine 保持同一日志 TAG，避免日志筛选行为变化 */

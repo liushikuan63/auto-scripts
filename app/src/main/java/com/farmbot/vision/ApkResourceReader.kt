@@ -13,6 +13,12 @@ import java.io.File
 import java.io.FileInputStream
 import java.util.zip.ZipInputStream
 
+/**
+ * APK 图片资源读取
+ *
+ * 扫描 APK 内的图片资源、按关键词或扩展名过滤、解码为 OpenCV Mat，
+ * 也可读取设备上已安装应用的 APK 并列出其中的图片。
+ */
 class ApkResourceReader private constructor() {
 
     companion object {

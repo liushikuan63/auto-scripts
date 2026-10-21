@@ -8,6 +8,12 @@ import com.farmbot.policy.GameRules
 import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 
+/**
+ * 每日对战与升级决策
+ *
+ * DailyBattle 负责匹配与领取对局奖励（周末双倍期翻倍，优先在双倍期完成）；
+ * UpgradeDecision 依据等级解锁表给出开垦 / 升级建议，并在配置允许时主动开垦。
+ */
 internal class BattleUpgradeHandler(private val ctx: FarmStateContext, private val navigator: NavigateAndScanHandler, private val taskScheduler: TaskScheduler) {
 
     /** 与原 FarmStateMachine 保持同一日志 TAG，避免日志筛选行为变化 */

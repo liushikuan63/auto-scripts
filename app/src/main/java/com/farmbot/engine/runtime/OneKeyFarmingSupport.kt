@@ -6,6 +6,13 @@ import com.farmbot.policy.GameRules
 import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 
+/**
+ * 一键务农与选种
+ *
+ * 农场主界面没有独立的「一键浇水 / 一键收获」文字入口，它们位于「一键务农」设置面板内，
+ * 因此浇水、收获、种植统一走「点一键务农 → 打开设置面板 → 勾选 → 确定」这一条链路。
+ * 本类负责该链路，并按配置与农场等级决定目标作物（限频执行，避免反复开关种子面板）。
+ */
 class OneKeyFarmingSupport(private val rt: FarmRuntime, private val ocr: OcrClickSupport, private val movement: MovementSupport) {
 
     /** 上次选种时间：一键务农每轮浇水/收获都会触发，限频避免反复开关种子面板 */

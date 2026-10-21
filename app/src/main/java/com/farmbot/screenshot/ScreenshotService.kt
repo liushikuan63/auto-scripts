@@ -25,6 +25,12 @@ import org.opencv.core.Mat
 import org.opencv.core.CvType
 import org.opencv.imgproc.Imgproc
 
+/**
+ * 录屏截图服务
+ *
+ * 基于 MediaProjection 持续提供屏幕位图：OCR 文字定位与图像识别都依赖它。
+ * 授权失效时通过 notifyCaptureLost 通知引擎暂停，避免数百次无效重试。
+ */
 class ScreenshotService : Service() {
 
     private val binder by lazy { ScreenshotBinder() }

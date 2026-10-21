@@ -18,6 +18,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * 引擎对外状态
+ *
+ * RUNNING：状态机正在推进；PAUSED：已暂停，等待人工恢复或重新授权录屏；
+ * STOPPED：完全停止。UI 与悬浮面板据此展示当前允许执行的操作。
+ */
 enum class EngineState {
     RUNNING,
     PAUSED,

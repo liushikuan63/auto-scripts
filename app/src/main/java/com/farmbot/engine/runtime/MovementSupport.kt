@@ -4,6 +4,13 @@ import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
+/**
+ * 走位支撑：把角色移动到目标地块
+ *
+ * 依赖 OcrClickSupport 定位画面中的目标文字，按文字相对画面中心的偏移推摇杆方向，
+ * 逐步推进后复查，直到文字贴近画面中心或消失。农场为 SurfaceView 自绘、
+ * 无障碍节点树为空，移动方向只能由 OCR 视觉定位给出。
+ */
 class MovementSupport(private val rt: FarmRuntime, private val ocr: OcrClickSupport) {
 
     /**

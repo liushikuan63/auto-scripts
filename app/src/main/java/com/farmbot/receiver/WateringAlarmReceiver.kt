@@ -7,6 +7,12 @@ import android.os.Build
 import android.util.Log
 import com.farmbot.engine.FarmEngine
 
+/**
+ * 浇水闹钟广播接收器
+ *
+ * 接收 TaskScheduler 设置的精确闹钟与开机广播，触发引擎立即执行一次浇水。
+ * 开机广播走同一入口，但引擎自身会阻止在停止状态下被隐式拉起。
+ */
 class WateringAlarmReceiver : BroadcastReceiver() {
 
     companion object {

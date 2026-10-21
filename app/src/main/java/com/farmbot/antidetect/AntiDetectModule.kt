@@ -3,6 +3,12 @@ package com.farmbot.antidetect
 import android.util.Log
 import kotlin.random.Random
 
+/**
+ * 反检测：把自动化操作伪装成真人操作
+ *
+ * 提供动作级随机延迟与抖动、偶发误触模拟，以及按累计操作次数给出的疲劳与休息节奏，
+ * 供无障碍手势层在点击 / 滑动 / 长按时取用，使操作时序不呈现为机器特征。
+ */
 object AntiDetectModule {
 
     private const val TAG = "AntiDetect"

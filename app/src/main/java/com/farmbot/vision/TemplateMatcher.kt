@@ -7,6 +7,12 @@ import org.opencv.core.Mat
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 
+/**
+ * 模板匹配
+ *
+ * 在给定截图中按模板查找目标位置，支持单次匹配与多尺度匹配（应对分辨率差异），
+ * 返回匹配位置与相似度。
+ */
 object TemplateMatcher {
 
     private const val TAG = "TemplateMatcher"

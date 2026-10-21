@@ -4,6 +4,12 @@ import kotlin.math.ln
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+/**
+ * 随机时序与抖动工具
+ *
+ * 提供泊松延迟、高斯延迟、点击坐标偏移、贝塞尔控制点偏移、偶发误触与随机空闲间隔，
+ * 用于把自动化操作的时序打散成接近真人的分布。
+ */
 object RandomUtil {
 
     private val random = Random
