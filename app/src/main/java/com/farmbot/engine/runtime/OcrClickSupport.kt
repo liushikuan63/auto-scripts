@@ -14,6 +14,13 @@ internal data class OcrHit(
 
 class OcrClickSupport(private val rt: FarmRuntime) {
 
+    /**
+     * 尝试通过三级降级链点击游戏内文字按钮：
+     *   1. 无障碍节点精确匹配 → 2. 无障碍节点模糊匹配 → 3. 截屏+OCR文字定位坐标点击。
+     * 返回 false 表示全部层级失败（调用方应降级到模拟流程而非触发恢复循环）。
+     * v1.4.3: 新增第3级 —— 王者农场主体为 SurfaceView 渲染，节点树常为空，
+     *         此前仅靠节点点击必然失败，OCR坐标层才是真实可用的自动点击路径。
+     */
     internal suspend fun tryClickTexts(vararg texts: String): Boolean {
         if (rt.actionExecutor == null) return false   // 执行器未注入 → 模拟模式
         val svc = com.farmbot.accessibility.FarmAccessibilityService.getInstance() ?: return false
@@ -130,6 +137,7 @@ class OcrClickSupport(private val rt: FarmRuntime) {
     // ========== 内部实现占位（由 ActionExecutor/ScreenController 替换） ==========
 
 
+    /** OCR 全屏检测任一关键词是否存在（不点击）。用于确认面板/文字出现。 */
     internal suspend fun ocrContainsAny(vararg keywords: String): Boolean {
         val provider = rt.screenshotProvider ?: return false
         val bmp = runCatching { provider() }.getOrNull() ?: return false
@@ -196,12 +204,4 @@ class OcrClickSupport(private val rt: FarmRuntime) {
         }
     }
 
-    /** 上次选种时间：一键务农每轮浇水/收获都会触发，限频避免反复开关种子面板。 */
-    /**
-     * v1.4.37: 右下角种植按钮未选种子时，按助手配置选种。
-     * 优先级：双倍期内→周末作物(金币)；双倍前卡点窗口→卡双倍(周五18点成熟)；平日→平日作物(经验)。
-     * 流程：OCR定位右下角"种植"按钮→点开种子面板→点击目标作物→确定。
-     * 一键种植使用当前已选种子，故须在"一键务农"确认前完成选种。
-     * 找不到种植按钮/目标作物时如实返回 false（一键种植沿用上次所选种子），不阻断主流程。
-     */
 }

@@ -5,7 +5,6 @@ import com.farmbot.engine.ActionExecutor
 import com.farmbot.ocr.OcrHelper
 import com.farmbot.recognition.TemplateMatcher
 import com.farmbot.util.Logger
-import com.farmbot.util.RandomDelay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -67,5 +66,4 @@ class FarmRuntime {
 
     fun getLogs(): List<String> = _logs.value.toList()
 
-    fun randomDelay(min: Int, max: Int): Long = RandomDelay.uniform(min, max).toLong()
 }

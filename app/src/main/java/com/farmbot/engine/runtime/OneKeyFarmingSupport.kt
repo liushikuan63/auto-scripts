@@ -85,8 +85,13 @@ class OneKeyFarmingSupport(private val rt: FarmRuntime, private val ocr: OcrClic
         return false
     }
 
-    /** OCR 全屏检测任一关键词是否存在（不点击）。用于确认面板/文字出现。 */
-
+    /**
+     * v1.4.37: 右下角种植按钮未选种子时，按助手配置选种。
+     * 优先级：双倍期内→周末作物(金币)；双倍前卡点窗口→卡双倍(周五18点成熟)；平日→平日作物(经验)。
+     * 流程：OCR定位右下角"种植"按钮→点开种子面板→点击目标作物→确定。
+     * 一键种植使用当前已选种子，故须在"一键务农"确认前完成选种。
+     * 找不到种植按钮/目标作物时如实返回 false（一键种植沿用上次所选种子），不阻断主流程。
+     */
     internal suspend fun ensureSeedSelected(): Boolean {
         val cfg = ConfigManager.getConfig()
         val now = System.currentTimeMillis()
@@ -174,11 +179,4 @@ class OneKeyFarmingSupport(private val rt: FarmRuntime, private val ocr: OcrClic
             ?.name
     }
 
-    /**
-     * v1.4.37: 走到目标地块——朝 OCR 目标文字推摇杆让角色靠近。
-     * 开垦/祝福/偷菜/单块操作均需走到对应地块才可操作：相机跟随角色，
-     * 目标文字相对画面中心的偏移即角色需要移动的方向；每步推进后复查，
-     * 文字靠近画面中心（角色已贴近）或从画面消失（走到身前/被遮挡）即视为到达。
-     * @return true=已接近/到达目标；false=目标未找到或步数用尽（如实返回，不假成功）
-     */
 }

@@ -6,6 +6,13 @@ import kotlinx.coroutines.isActive
 
 class MovementSupport(private val rt: FarmRuntime, private val ocr: OcrClickSupport) {
 
+    /**
+     * v1.4.37: 走到目标地块——朝 OCR 目标文字推摇杆让角色靠近。
+     * 开垦/祝福/偷菜/单块操作均需走到对应地块才可操作：相机跟随角色，
+     * 目标文字相对画面中心的偏移即角色需要移动的方向；每步推进后复查，
+     * 文字靠近画面中心（角色已贴近）或从画面消失（走到身前/被遮挡）即视为到达。
+     * @return true=已接近/到达目标；false=目标未找到或步数用尽（如实返回，不假成功）
+     */
     internal suspend fun walkNearText(
         keywords: List<String>,
         maxSteps: Int = 6,

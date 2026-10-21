@@ -25,6 +25,19 @@ internal class NavigateAndScanHandler(private val ctx: FarmStateContext) {
 
     private suspend fun <T> withErrorLog(op: String, block: suspend () -> T?): T? = ctx.withErrorLog(op, block)
 
+    /**
+     * v1.4.14: 用 OCR 确认当前确实处于农场页面。
+     * 王者农场为 SurfaceView 自绘、无障碍节点树为空，GameSceneDetector 的
+     * classifyFromText 依赖节点树文本，对农场页面不可靠（大厅 Activity 常被判为
+     * GAME_HALL/OTHER_IN_GAME）。故改用 OCR 识别农场标志性文字作为"是否已进农场"的依据。
+     * 注意：不得用"农场/王者农场/浇水/成熟/作物"等宽泛词——大厅入口横幅即含"王者农场
+     * 周末双倍"，且大厅可能混排含"浇水/成熟/作物/土地"的宣传文案，会误判进入农场
+     * （v1.4.15 曾因加入宽泛词导致"大厅误判已进入农场→乱点灌溉/收获并假成功"）。
+     * v1.4.21: 新手引导态农场页无"一键浇水/可开垦"等强词，仅有右下角"种植"按钮、
+     * 右缘"仓库"入口等农场独有元素（大厅没有这些）。补入"种植/仓库"作为引导态标志。
+     * v1.4.28: 农场可能短暂出现在加载帧(如10%/30%)或 OCR 抖动，导致"未确认在农场"误判并阻断浇水/收获。
+     * 增加重试：单次未确认则短暂等待后重试（最多3次），容忍瞬态加载/抖动；确认后提前返回。
+     */
     internal suspend fun confirmFarmScene(): Boolean {
         val provider = rt.screenshotProvider ?: return false
         for (attempt in 0 until 3) {
@@ -61,7 +74,6 @@ internal class NavigateAndScanHandler(private val ctx: FarmStateContext) {
      *   1) 显式 "农场等级N" / "等级N" / "LvN"
      *   2) 兜底：农场名"XX的农场"同排顶部区域的 2 位纯数字（等级徽章）
      */
-
     internal suspend fun detectFarmLevel(): Int? {
         val provider = rt.screenshotProvider ?: return null
         val bmp = runCatching { provider() }.getOrNull() ?: return null
