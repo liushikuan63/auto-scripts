@@ -420,6 +420,13 @@ class FloatingPanelManager(
 // 悬浮窗专用生命周期所有者
 // ================================================================
 
+/**
+ * 悬浮窗专用的生命周期所有者
+ *
+ * 悬浮面板不在 Activity 内，没有系统提供的生命周期宿主，
+ * 这里用一个最小实现承载 Compose 的 Lifecycle 与 SavedStateRegistry，
+ * 由 FloatingPanelManager 手动驱动。
+ */
 private class OverlayLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val registryController = SavedStateRegistryController.create(this)

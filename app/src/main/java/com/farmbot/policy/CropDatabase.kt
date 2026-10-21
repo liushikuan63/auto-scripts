@@ -36,6 +36,12 @@ data class CropInfo(
     val heroName: String? = null
 )
 
+/**
+ * 作物数据表
+ *
+ * 按解锁等级收录各类作物的自然成熟时长与每小时经验 / 金币收益，
+ * 并标记哪些作物以金币为主（周末双倍期优先选择）。
+ */
 object CropDatabase {
 
     enum class Strategy { EXP_FIRST, COIN_FIRST, AUTO }

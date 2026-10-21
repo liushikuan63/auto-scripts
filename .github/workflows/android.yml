@@ -37,6 +37,12 @@ jobs:
           test -f gradle/wrapper/gradle-wrapper.jar
           chmod +x gradlew
 
+      - name: Code health audit (gate self-test + real tree)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File ./scripts/audit-code-health-selftest.ps1
+          pwsh -NoProfile -File ./scripts/audit-code-health.ps1
+
       - name: Unit tests, lint and debug build
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
 
