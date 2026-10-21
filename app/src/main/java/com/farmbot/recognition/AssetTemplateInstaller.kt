@@ -1,3 +1,7 @@
+/**
+ * 预置模板安装器 — 首次启动时把 assets 目录下 templates 中的 PNG 文件自动复制到
+ */
+
 package com.farmbot.recognition
 
 import android.content.Context

@@ -1,3 +1,7 @@
+/**
+ * 本地埋点收集器 — 识别成功率统计 + 阈值自动优化
+ */
+
 package com.farmbot.metrics
 
 import android.content.Context

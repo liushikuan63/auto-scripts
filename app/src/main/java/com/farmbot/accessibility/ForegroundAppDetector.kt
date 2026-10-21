@@ -1,3 +1,7 @@
+/**
+ * 稳定的前台App检测器
+ */
+
 package com.farmbot.accessibility
 
 import android.app.AppOpsManager

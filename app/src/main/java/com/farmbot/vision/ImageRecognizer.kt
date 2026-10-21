@@ -1,3 +1,7 @@
+/**
+ * OpenCV 模板加载与查找
+ */
+
 package com.farmbot.vision
 
 import android.util.Log

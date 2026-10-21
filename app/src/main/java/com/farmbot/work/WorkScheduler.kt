@@ -1,3 +1,7 @@
+/**
+ * WorkManager 调度入口 — 周期性浇水任务的注册/取消
+ */
+
 package com.farmbot.work
 
 import android.content.Context

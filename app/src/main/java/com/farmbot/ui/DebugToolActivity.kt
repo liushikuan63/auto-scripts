@@ -1,3 +1,7 @@
+/**
+ * 调试/校准工具页 DebugToolActivity
+ */
+
 package com.farmbot.ui
 
 import android.graphics.Bitmap

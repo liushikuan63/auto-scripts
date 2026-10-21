@@ -1,3 +1,7 @@
+/**
+ * 增强版 TemplateMatcher — 融合 HonorFarmBot 版本
+ */
+
 package com.farmbot.recognition
 
 import android.graphics.Bitmap

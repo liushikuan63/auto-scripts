@@ -1,3 +1,7 @@
+/**
+ * 悬浮窗常驻前台服务 — 修复"App隐藏时悬浮窗也消失"的核心方案
+ */
+
 package com.farmbot.service
 
 import android.app.Notification
@@ -88,6 +92,10 @@ class FloatingWindowService : Service() {
 
     // 接收来自Activity/外部的命令广播（可选支持）
     private val commandReceiver = object : BroadcastReceiver() {
+        /**
+         * 
+悬浮窗命令广播处理
+         */
         override fun onReceive(context: Context?, intent: Intent?) {
             intent?.action?.let { handleCommand(it) }
         }

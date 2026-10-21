@@ -1,3 +1,7 @@
+/**
+ * 状态处理器的上下文契约
+ */
+
 package com.farmbot.engine.runtime
 
 import com.farmbot.engine.FarmState

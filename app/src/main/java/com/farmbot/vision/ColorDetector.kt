@@ -1,3 +1,7 @@
+/**
+ * 颜色识别
+ */
+
 package com.farmbot.vision
 
 import android.util.Log

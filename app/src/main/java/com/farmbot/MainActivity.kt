@@ -1,3 +1,7 @@
+/**
+ * 主界面 MainActivity：启动封装(悬浮窗/前台服务)、权限体检、玩法助手入口。
+ */
+
 package com.farmbot
 
 import android.content.Intent
@@ -425,5 +429,4 @@ private fun EngineState.displayName(): String = when (this) {
     EngineState.PAUSED -> "已暂停"
     EngineState.STOPPED -> "已停止"
 }
-
 

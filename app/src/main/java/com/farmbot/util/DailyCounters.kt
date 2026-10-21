@@ -1,3 +1,7 @@
+/**
+ * 每日社交操作计数器 — 对应王者农场每日限额机制
+ */
+
 package com.farmbot.util
 
 import android.content.Context

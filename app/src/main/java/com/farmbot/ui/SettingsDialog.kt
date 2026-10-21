@@ -1,3 +1,7 @@
+/**
+ * 设置面板与 APK 模板导入界面
+ */
+
 package com.farmbot.ui
 
 import android.content.Context

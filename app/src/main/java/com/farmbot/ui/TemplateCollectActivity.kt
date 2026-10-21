@@ -1,3 +1,7 @@
+/**
+ * 模板采集 Activity — Compose 版
+ */
+
 package com.farmbot.ui
 
 import android.content.Intent

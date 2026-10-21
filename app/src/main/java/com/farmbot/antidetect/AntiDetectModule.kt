@@ -1,3 +1,7 @@
+/**
+ * 反检测：把自动化操作伪装成真人操作
+ */
+
 package com.farmbot.antidetect
 
 import android.util.Log

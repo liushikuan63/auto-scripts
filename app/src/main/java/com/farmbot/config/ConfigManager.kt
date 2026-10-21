@@ -1,3 +1,7 @@
+/**
+ * 配置管理器 — 融合 HonorFarmBot DataStore 版 + 回退到 SharedPreferences
+ */
+
 package com.farmbot.config
 
 import android.content.Context

@@ -1,3 +1,7 @@
+/**
+ * 每日对战与升级决策
+ */
+
 package com.farmbot.engine.states
 
 import com.farmbot.engine.FarmState

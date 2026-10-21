@@ -1,3 +1,7 @@
+/**
+ * 配置数据模型 — 融合 HonorFarmBot BotConfig + 当前 FarmConfig
+ */
+
 package com.farmbot.config
 
 /**

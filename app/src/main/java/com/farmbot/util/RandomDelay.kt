@@ -1,3 +1,7 @@
+/**
+ * 拟人化随机延迟生成器 — 融合 HonorFarmBot 版本
+ */
+
 package com.farmbot.util
 
 import kotlin.math.exp

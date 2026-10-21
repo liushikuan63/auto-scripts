@@ -1,3 +1,7 @@
+/**
+ * 策略管理器 — 插件化策略的加载 / 保存 / 切换 / 导入 / 导出
+ */
+
 package com.farmbot.policy
 
 import android.content.Context

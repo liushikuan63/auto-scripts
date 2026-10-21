@@ -1,3 +1,7 @@
+/**
+ * AppPickerActivity 的实现。
+ */
+
 package com.farmbot.ui
 
 import android.content.Intent

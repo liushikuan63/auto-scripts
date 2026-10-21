@@ -1,3 +1,7 @@
+/**
+ * OCR 命中结果
+ */
+
 package com.farmbot.engine.runtime
 
 import com.farmbot.ocr.OcrHelper

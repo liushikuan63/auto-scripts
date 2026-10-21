@@ -1,3 +1,7 @@
+/**
+ * 好友农场拜访：偷菜与祝福
+ */
+
 package com.farmbot.engine.states
 
 import com.farmbot.engine.FarmState

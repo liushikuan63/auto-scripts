@@ -1,3 +1,7 @@
+/**
+ * 模板采集器 — 融合 HonorFarmBot 版本
+ */
+
 package com.farmbot.recognition
 
 import android.content.Context

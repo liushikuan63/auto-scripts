@@ -1,3 +1,7 @@
+/**
+ * 走位支撑：把角色移动到目标地块
+ */
+
 package com.farmbot.engine.runtime
 
 import com.farmbot.util.RandomDelay

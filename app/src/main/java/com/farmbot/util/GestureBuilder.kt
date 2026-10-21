@@ -1,3 +1,7 @@
+/**
+ * 手势构建工具 — 融合 HonorFarmBot 版本
+ */
+
 package com.farmbot.util
 
 import android.graphics.Path

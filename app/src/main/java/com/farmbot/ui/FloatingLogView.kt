@@ -1,3 +1,7 @@
+/**
+ * 悬浮窗实时日志面板 — v1.4.4 重构
+ */
+
 package com.farmbot.ui
 
 import android.content.Context

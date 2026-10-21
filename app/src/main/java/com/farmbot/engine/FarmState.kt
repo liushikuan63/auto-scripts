@@ -1,3 +1,7 @@
+/**
+ * 农场状态机状态定义
+ */
+
 package com.farmbot.engine
 
 /**

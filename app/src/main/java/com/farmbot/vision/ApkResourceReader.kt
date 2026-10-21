@@ -1,3 +1,7 @@
+/**
+ * APK 图片资源读取
+ */
+
 package com.farmbot.vision
 
 import android.content.Context
@@ -74,12 +78,20 @@ class ApkResourceReader private constructor() {
             return Imgcodecs.imdecode(MatOfByte(bytes), Imgcodecs.IMREAD_COLOR)
         }
 
+        /**
+         * 
+按资源路径判等
+         */
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is ResourceEntry) return false
             return path == other.path
         }
 
+        /**
+         * 
+与 equals 配套的哈希值
+         */
         override fun hashCode(): Int = path.hashCode()
     }
 

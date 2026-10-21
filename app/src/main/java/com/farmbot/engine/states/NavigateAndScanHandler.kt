@@ -1,3 +1,7 @@
+/**
+ * 进入农场与作物扫描
+ */
+
 package com.farmbot.engine.states
 
 import com.farmbot.engine.FarmState

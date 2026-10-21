@@ -1,3 +1,7 @@
+/**
+ * 悬浮控制面板管理器 — 三态设计（收起/展开/边缘隐藏条）
+ */
+
 package com.farmbot.ui
 
 import android.annotation.SuppressLint
@@ -245,7 +249,15 @@ class FloatingPanelManager(
             clampToScreen(v)
         }
         composeView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            /**
+             * 
+悬浮窗视图挂载：驱动 Compose 生命周期恢复
+             */
             override fun onViewAttachedToWindow(v: View) { lifecycleOwner?.performResume() }
+            /**
+             * 
+悬浮窗视图移除：驱动 Compose 生命周期暂停
+             */
             override fun onViewDetachedFromWindow(v: View) { lifecycleOwner?.performPause() }
         })
 

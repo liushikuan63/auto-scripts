@@ -1,3 +1,7 @@
+/**
+ * 录屏截图服务
+ */
+
 package com.farmbot.screenshot
 
 import android.annotation.SuppressLint
@@ -273,6 +277,10 @@ class ScreenshotService : Service() {
         // Android 14+ 要求 createVirtualDisplay 前必须注册 Callback，否则抛 SecurityException
         ensureCaptureThread()
         val callback = object : MediaProjection.Callback() {
+            /**
+             * 
+录屏停止回调：释放投影资源
+             */
             override fun onStop() {
                 Log.i(TAG, "MediaProjection 被系统或用户停止")
                 Handler(Looper.getMainLooper()).post {

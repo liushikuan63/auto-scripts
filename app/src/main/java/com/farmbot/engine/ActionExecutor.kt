@@ -1,3 +1,7 @@
+/**
+ * 动作执行器 — 融合 HonorFarmBot 版本
+ */
+
 package com.farmbot.engine
 
 import android.content.Context

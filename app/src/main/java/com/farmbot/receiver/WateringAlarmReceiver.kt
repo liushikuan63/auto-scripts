@@ -1,3 +1,7 @@
+/**
+ * 浇水闹钟广播接收器
+ */
+
 package com.farmbot.receiver
 
 import android.content.BroadcastReceiver

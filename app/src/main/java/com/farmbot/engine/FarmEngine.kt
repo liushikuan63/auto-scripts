@@ -1,3 +1,7 @@
+/**
+ * 引擎对外状态
+ */
+
 package com.farmbot.engine
 
 import android.content.Context

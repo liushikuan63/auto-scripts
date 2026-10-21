@@ -1,3 +1,7 @@
+/**
+ * ML Kit 中文文字识别封装
+ */
+
 package com.farmbot.ocr
 
 import android.content.Context

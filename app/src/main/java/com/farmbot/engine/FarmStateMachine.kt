@@ -1,3 +1,7 @@
+/**
+ * 农场状态机 — 融合 HonorFarmBot 高级特性
+ */
+
 package com.farmbot.engine
 
 import com.farmbot.engine.runtime.FarmRuntime

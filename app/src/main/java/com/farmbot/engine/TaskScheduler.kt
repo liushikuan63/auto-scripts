@@ -1,3 +1,7 @@
+/**
+ * 任务调度器 — 双通道：精确 Alarm（主） + WorkManager（兜底）
+ */
+
 package com.farmbot.engine
 
 import android.app.AlarmManager

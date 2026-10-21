@@ -1,3 +1,7 @@
+/**
+ * 常驻前台服务 — 让引擎在后台保活
+ */
+
 package com.farmbot.service
 
 import android.app.Notification
@@ -58,6 +62,10 @@ class FarmBotForegroundService : Service() {
     private var collectJob: Job? = null
 
     private val receiver = object : BroadcastReceiver() {
+        /**
+         * 
+常驻通知动作广播处理：暂停 / 恢复 / 停止 / 立即浇水
+         */
         override fun onReceive(ctx: Context?, intent: Intent?) {
             when (intent?.action) {
                 ACTION_STOP -> { stopSelf(); FarmEngine.getInstance(applicationContext).stop() }

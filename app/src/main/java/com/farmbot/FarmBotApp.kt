@@ -1,3 +1,7 @@
+/**
+ * FarmBot Application — 全局初始化入口
+ */
+
 package com.farmbot
 
 import android.app.Application

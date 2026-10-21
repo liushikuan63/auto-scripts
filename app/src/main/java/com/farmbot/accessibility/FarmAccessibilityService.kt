@@ -1,3 +1,7 @@
+/**
+ * 无障碍服务 — 融合 HonorFarmBot 版本
+ */
+
 package com.farmbot.accessibility
 
 import android.accessibilityservice.AccessibilityService
@@ -400,10 +404,18 @@ class FarmAccessibilityService : AccessibilityService() {
 
     private class GestureResultListener(private val tag: String) :
         GestureResultCallback() {
+        /**
+         * 
+手势执行完成回调
+         */
         override fun onCompleted(gestureDescription: GestureDescription?) {
             // v1.4.17: 升级为可见日志，便于判断点击是否真的执行成功（此前 Timber.v 默认不可见）
             Logger.i("FarmAccessibilityService", "手势完成: $tag")
         }
+        /**
+         * 
+手势被取消回调
+         */
         override fun onCancelled(gestureDescription: GestureDescription?) {
             Logger.w("FarmAccessibilityService", "手势被取消: $tag（可能被窗口切换/其它输入抢占）")
         }

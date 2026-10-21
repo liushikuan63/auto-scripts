@@ -1,3 +1,7 @@
+/**
+ * 状态机运行时：共享依赖实例、运行标志、计数与日志
+ */
+
 package com.farmbot.engine.runtime
 
 import android.util.Log

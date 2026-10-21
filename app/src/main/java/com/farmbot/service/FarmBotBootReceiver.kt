@@ -1,3 +1,7 @@
+/**
+ * 开机自启 / 应用更新自启 — 拉起前台服务
+ */
+
 package com.farmbot.service
 
 import android.content.BroadcastReceiver

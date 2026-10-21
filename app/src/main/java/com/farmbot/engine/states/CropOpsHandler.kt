@@ -1,3 +1,7 @@
+/**
+ * 自家农场操作：浇水、收获、售卖 / 存储
+ */
+
 package com.farmbot.engine.states
 
 import com.farmbot.engine.FarmState

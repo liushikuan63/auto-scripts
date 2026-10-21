@@ -1,3 +1,7 @@
+/**
+ * 日志系统 — 融合 HonorFarmBot 版本
+ */
+
 package com.farmbot.util
 
 import android.content.Context
@@ -102,6 +106,10 @@ object Logger {
 
     /** 与 Timber 桥接：自动把 Timber 日志写入文件和环形缓冲区 */
     class FileTree(private val ctx: Context) : Timber.Tree() {
+        /**
+         * 
+把日志写入 Logcat（与内存缓冲并行）
+         */
         override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
             val tg = tag ?: "FarmBot"
             when (priority) {

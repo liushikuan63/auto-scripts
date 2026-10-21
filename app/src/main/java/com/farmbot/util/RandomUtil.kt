@@ -1,3 +1,7 @@
+/**
+ * 随机时序与抖动工具
+ */
+
 package com.farmbot.util
 
 import kotlin.math.ln

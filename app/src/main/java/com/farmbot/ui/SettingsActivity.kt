@@ -1,3 +1,7 @@
+/**
+ * 设置页宿主 Activity
+ */
+
 package com.farmbot.ui
 
 import android.os.Bundle

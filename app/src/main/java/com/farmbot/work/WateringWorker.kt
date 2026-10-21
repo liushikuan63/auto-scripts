@@ -1,3 +1,7 @@
+/**
+ * 浇水周期 Worker — 由 WorkManager 周期性触发
+ */
+
 package com.farmbot.work
 
 import android.content.Context

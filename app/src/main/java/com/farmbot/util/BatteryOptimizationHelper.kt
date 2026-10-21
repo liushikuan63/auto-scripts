@@ -1,3 +1,7 @@
+/**
+ * 电池优化白名单工具 — 检测与一键跳转
+ */
+
 package com.farmbot.util
 
 import android.annotation.SuppressLint

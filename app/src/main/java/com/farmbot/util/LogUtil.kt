@@ -1,3 +1,7 @@
+/**
+ * 运行日志缓冲
+ */
+
 package com.farmbot.util
 
 import android.util.Log

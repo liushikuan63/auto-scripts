@@ -1,3 +1,7 @@
+/**
+ * OCR 文字识别助手 — 融合 HonorFarmBot 版本
+ */
+
 package com.farmbot.ocr
 
 import android.graphics.Bitmap

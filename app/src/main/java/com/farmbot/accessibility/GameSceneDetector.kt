@@ -1,3 +1,7 @@
+/**
+ * 游戏内场景检测器 — 解决 v1.3.0 "仅能检测游戏前台，检测不到游戏内状态" 的问题
+ */
+
 package com.farmbot.accessibility
 
 import android.view.accessibility.AccessibilityEvent
