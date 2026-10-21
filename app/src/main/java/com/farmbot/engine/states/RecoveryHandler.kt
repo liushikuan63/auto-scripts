@@ -67,6 +67,4 @@ internal class RecoveryHandler(private val ctx: FarmStateContext) {
         transitionToInternal(FarmState.NavigateToFarm)
     }
 
-    // ============ 业务状态 ============
-
 }

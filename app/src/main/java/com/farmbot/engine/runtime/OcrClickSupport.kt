@@ -158,7 +158,7 @@ class OcrClickSupport(private val rt: FarmRuntime) {
             rt.actionExecutor != null &&
             com.farmbot.accessibility.FarmAccessibilityService.getInstance() != null
 
-    // ========== 内部实现占位（由 ActionExecutor/ScreenController 替换） ==========
+    // ========== OCR 查询与坐标定位 ==========
 
 
     /** OCR 全屏检测任一关键词是否存在（不点击）。用于确认面板/文字出现。 */
