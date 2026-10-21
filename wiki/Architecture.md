@@ -8,10 +8,14 @@ Compose UI / 悬浮窗 / 通知动作
             FarmEngine
                 |
         FarmStateMachine ------ TaskScheduler
-          |       |                 |       |
-  ActionExecutor  策略层       AlarmManager WorkManager
-       |          |                 |       |
-无障碍手势 <- OCR/截图/模板识别       WateringAlarmReceiver
+          |         |                |       |
+  状态处理器(5)  支撑类(3)      AlarmManager WorkManager
+          |         |                |       |
+ FarmStateContext  OCR/模板/走位      WateringAlarmReceiver
+          |
+ FarmRuntime（共享依赖、计数、日志）
+          |
+   ActionExecutor / 无障碍手势 / 截图
 ```
 
 ### 应用与界面
@@ -25,7 +29,11 @@ Compose UI / 悬浮窗 / 通知动作
 ### 引擎
 
 - `FarmEngine` 是应用级编排入口，维护 `RUNNING`、`PAUSED`、`STOPPED` 状态。
-- `FarmStateMachine` 串行执行农场状态，负责超时、恢复、OCR 定位和动作流程。
+- `FarmStateMachine` 串行执行农场状态，负责状态流转、单状态 3 分钟超时与三级恢复调度。
+- 业务状态实现在 `engine/states/` 的 5 个处理器（导航扫描、农场操作、好友拜访、对战升级、异常恢复），
+  OCR 定位与点击、走位、一键务农在 `engine/runtime/` 的 3 个支撑类，
+  共享依赖、计数与日志集中在 `FarmRuntime`。
+- `FarmStateContext` 是处理器与状态机之间的接缝：处理器只依赖该接口，可脱离状态机独立构造与测试。
 - `ActionExecutor` 封装模板识别、OCR 与无障碍点击链。
 - `TaskScheduler` 设置下一次精确闹钟并管理每日对战检查任务。
 
