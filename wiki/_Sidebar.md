@@ -8,3 +8,4 @@
 - [故障排查](Troubleshooting)
 - [开发与发布](Development)
 - [代码审查记录](Code-Review-2026-09-05)
+- [依赖升级假绿复盘](Incident-2026-10-False-Green)

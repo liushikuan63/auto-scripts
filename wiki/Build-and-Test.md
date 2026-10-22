@@ -64,3 +64,15 @@ MediaProjection、无障碍手势和真实游戏页面需要设备测试。涉�
 ## CI
 
 GitHub Actions 使用 JDK 17 和 Gradle 缓存，依次执行单元测试、Lint 与 Debug 编译。任何任务失败都会阻断验证工作流，不使用 Lint baseline 隐藏新增错误。
+
+## 依赖变更的验证口径
+
+依赖改动后必须以 clean 构建为准：增量构建不会重跑 `:app:checkDebugAarMetadata`，
+会出现「本地绿、CI 红」的假象。完整复盘见 [依赖升级假绿复盘](Incident-2026-10-False-Green.md)。
+
+```powershell
+.\gradlew.bat clean
+.\gradlew.bat compileDebugKotlin testDebugUnitTest lintDebug assembleDebug
+```
+
+用某个 Gradle 任务探测依赖兼容性时必须加 `--rerun-tasks`，否则拿到的是 UP-TO-DATE 的旧结论。
