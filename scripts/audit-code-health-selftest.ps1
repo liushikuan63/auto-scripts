@@ -45,6 +45,7 @@ class Violations {
 
     fun BadNamedFunction() = 0
 
+    // 这一段调用了并不存在的 `ghostHelper.doIt()`
     // ============ 这一段是空的 ============
 }
 
@@ -94,6 +95,13 @@ class Misplaced {
 }
 "@
 [System.IO.File]::WriteAllText((Join-Path $wrongDir 'Misplaced.kt'), ($misplaced -replace "`r`n", "`n"))
+
+# R18：造一个超过 400 行的文件
+$big = Join-Path $srcDir 'Big.kt'
+$bigLines = @('package com.farmbot.fixture', '', 'class Big {')
+$bigLines += (1..420 | ForEach-Object { "    // 填充行 $_" })
+$bigLines += @('}', '')
+[System.IO.File]::WriteAllText($big, (($bigLines -join "`n") -replace "`r`n", "`n"))
 
 Write-Output '=== 审查脚本自检（对故意违规的样本） ==='
 $out = & pwsh -NoProfile -File $AuditScript -Root $fixture 2>&1
@@ -151,9 +159,20 @@ if ($pCode -ne 1) {
     exit 1
 }
 
+# 风格与粒度脚本（R15 / R16 硬规则，R17 / R18 信息性）
+$styleScript = Join-Path $PSScriptRoot 'audit-style.ps1'
+$stOut = & pwsh -NoProfile -File $styleScript -Root $fixture 2>&1
+$stCode = $LASTEXITCODE
+$stOut | ForEach-Object { Write-Output $_ }
+$text += ($stOut | Out-String)
+if ($stCode -ne 1) {
+    Write-Output "SELFTEST_FAIL: 风格脚本对违规样本的退出码应为 1，实际为 $stCode"
+    exit 1
+}
+
 # 每条规则都必须在样本上真的命中，否则该规则形同虚设
 $missing = @()
-foreach ($r in @(1,2,3,4,5,6,7,8,9,10,11,13,14)) {
+foreach ($r in @(1,2,3,4,5,6,7,8,9,10,11,13,14,16,17,18)) {
     if ($text -notmatch ("(?m)^R{0} .*?:\s*([1-9]\d*)" -f $r)) { $missing += $r }
 }
 if ($missing.Count -gt 0) {
@@ -162,5 +181,5 @@ if ($missing.Count -gt 0) {
 }
 
 Remove-Item -Recurse -Force $fixture -ErrorAction SilentlyContinue
-Write-Output 'SELFTEST_PASS: 违规样本被正确判红（退出码 1），且 R1–R11、R13、R14 每条都真的命中'
+Write-Output 'SELFTEST_PASS: 违规样本被正确判红（退出码 1），且 R1–R11、R13、R14、R16–R18 每条都真的命中'
 exit 0
