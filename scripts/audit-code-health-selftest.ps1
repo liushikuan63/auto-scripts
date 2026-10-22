@@ -55,8 +55,26 @@ class AlsoMissingDoc {
 class badClassName {
     fun ping() = 1
 }
+
+class UnitWithBadDoc {
+    /**
+     * 这个函数返回 false
+     */
+    fun unitFun() = Unit
+}
 '@
 [System.IO.File]::WriteAllText((Join-Path $srcDir 'Violations.kt'), ($sample -replace "`r`n", "`n"))
+
+# R9：文件名与顶层类型不一致
+$mismatch = @'
+package com.farmbot.fixture
+
+class SomethingElse {
+    fun unitFun() = Unit
+    // 引用了并不存在的 `ghostInline`
+}
+'@
+[System.IO.File]::WriteAllText((Join-Path $srcDir 'Mismatch.kt'), ($mismatch -replace "`r`n", "`n"))
 
 Write-Output '=== 审查脚本自检（对故意违规的样本） ==='
 $out = & pwsh -NoProfile -File $AuditScript -Root $fixture 2>&1
@@ -75,16 +93,26 @@ if ($nCode -ne 1) {
     exit 1
 }
 
-Remove-Item -Recurse -Force $fixture -ErrorAction SilentlyContinue
 
 if ($code -ne 1) {
     Write-Output "SELFTEST_FAIL: 违规样本的退出码应为 1，实际为 $code（审查脚本可能已失效）"
     exit 1
 }
 
+# 注释一致性脚本（命名之外的三条新规则）
+$commentScript = Join-Path $PSScriptRoot 'audit-comments.ps1'
+$cOut = & pwsh -NoProfile -File $commentScript -Root $fixture 2>&1
+$cCode = $LASTEXITCODE
+$cOut | ForEach-Object { Write-Output $_ }
+$text += ($cOut | Out-String)
+if ($cCode -ne 1) {
+    Write-Output "SELFTEST_FAIL: 注释一致性脚本对违规样本的退出码应为 1，实际为 $cCode"
+    exit 1
+}
+
 # 每条规则都必须在样本上真的命中，否则该规则形同虚设
 $missing = @()
-foreach ($r in 1..8) {
+foreach ($r in 1..11) {
     if ($text -notmatch ("(?m)^R{0} .*?:\s*([1-9]\d*)" -f $r)) { $missing += $r }
 }
 if ($missing.Count -gt 0) {
@@ -92,5 +120,6 @@ if ($missing.Count -gt 0) {
     exit 1
 }
 
-Write-Output 'SELFTEST_PASS: 违规样本被正确判红（退出码 1），且 R1–R8 每条都真的命中'
+Remove-Item -Recurse -Force $fixture -ErrorAction SilentlyContinue
+Write-Output 'SELFTEST_PASS: 违规样本被正确判红（退出码 1），且 R1–R11 每条都真的命中'
 exit 0

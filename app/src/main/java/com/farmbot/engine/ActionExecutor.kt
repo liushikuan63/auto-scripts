@@ -221,7 +221,7 @@ class ActionExecutor(
     }
 
 /**
- * 等待目标从画面消失，超时返回 false */
+ * 等待目标从画面消失；超时则结果中的 success 为 false */
     fun waitForDisappear(
         screenshotProvider: () -> Bitmap?,
         templateName: String,
