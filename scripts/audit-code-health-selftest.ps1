@@ -52,6 +52,13 @@ class AlsoMissingDoc {
     fun ping() = 1
 }
 
+class ParamsMismatch {
+    /**
+     * @param notExist 这个参数不在签名里
+     */
+    fun demo(a: Int) = Unit
+}
+
 class badClassName {
     fun ping() = 1
 }
@@ -75,6 +82,18 @@ class SomethingElse {
 }
 '@
 [System.IO.File]::WriteAllText((Join-Path $srcDir 'Mismatch.kt'), ($mismatch -replace "`r`n", "`n"))
+
+# R14：文件放在了与包名不匹配的目录下
+$wrongDir = Join-Path $srcDir 'wrong'
+New-Item -ItemType Directory -Force -Path $wrongDir | Out-Null
+$misplaced = @"
+package com.farmbot.fixture
+
+class Misplaced {
+    fun ping() = 1
+}
+"@
+[System.IO.File]::WriteAllText((Join-Path $wrongDir 'Misplaced.kt'), ($misplaced -replace "`r`n", "`n"))
 
 Write-Output '=== 审查脚本自检（对故意违规的样本） ==='
 $out = & pwsh -NoProfile -File $AuditScript -Root $fixture 2>&1
@@ -110,9 +129,31 @@ if ($cCode -ne 1) {
     exit 1
 }
 
+# 结构一致性脚本（常量命名与包目录对应）
+$structureScript = Join-Path $PSScriptRoot 'audit-structure.ps1'
+$sOut = & pwsh -NoProfile -File $structureScript -Root $fixture 2>&1
+$sCode = $LASTEXITCODE
+$sOut | ForEach-Object { Write-Output $_ }
+$text += ($sOut | Out-String)
+if ($sCode -ne 1) {
+    Write-Output "SELFTEST_FAIL: 结构脚本对违规样本的退出码应为 1，实际为 $sCode"
+    exit 1
+}
+
+# KDoc 参数一致性脚本（R13）
+$paramScript = Join-Path $PSScriptRoot 'audit-params.ps1'
+$pOut = & pwsh -NoProfile -File $paramScript -Root $fixture 2>&1
+$pCode = $LASTEXITCODE
+$pOut | ForEach-Object { Write-Output $_ }
+$text += ($pOut | Out-String)
+if ($pCode -ne 1) {
+    Write-Output "SELFTEST_FAIL: 参数脚本对违规样本的退出码应为 1，实际为 $pCode"
+    exit 1
+}
+
 # 每条规则都必须在样本上真的命中，否则该规则形同虚设
 $missing = @()
-foreach ($r in 1..11) {
+foreach ($r in @(1,2,3,4,5,6,7,8,9,10,11,13,14)) {
     if ($text -notmatch ("(?m)^R{0} .*?:\s*([1-9]\d*)" -f $r)) { $missing += $r }
 }
 if ($missing.Count -gt 0) {
@@ -121,5 +162,5 @@ if ($missing.Count -gt 0) {
 }
 
 Remove-Item -Recurse -Force $fixture -ErrorAction SilentlyContinue
-Write-Output 'SELFTEST_PASS: 违规样本被正确判红（退出码 1），且 R1–R11 每条都真的命中'
+Write-Output 'SELFTEST_PASS: 违规样本被正确判红（退出码 1），且 R1–R11、R13、R14 每条都真的命中'
 exit 0

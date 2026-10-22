@@ -44,6 +44,8 @@ jobs:
           pwsh -NoProfile -File ./scripts/audit-code-health.ps1
           pwsh -NoProfile -File ./scripts/audit-naming.ps1
           pwsh -NoProfile -File ./scripts/audit-comments.ps1
+          pwsh -NoProfile -File ./scripts/audit-structure.ps1
+          pwsh -NoProfile -File ./scripts/audit-params.ps1
 
       - name: Unit tests, lint and debug build
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
